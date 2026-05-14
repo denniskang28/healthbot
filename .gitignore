@@ -1,0 +1,35 @@
+# Python
+llm-service/venv/
+llm-service/__pycache__/
+llm-service/*.pyc
+llm-service/.env
+
+# Java / Maven
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# Node / React Admin
+admin/node_modules/
+admin/dist/
+admin/.env
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+
+# Gradle wrapper jar (keep scripts, skip binary)
+android/gradle/wrapper/gradle-wrapper.jar

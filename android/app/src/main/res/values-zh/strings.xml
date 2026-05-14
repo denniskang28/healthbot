@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AIA健康</string>
+    <string name="health_assistant">健康助手</string>
+    <string name="send">发送</string>
+    <string name="consult_now">立即问诊</string>
+    <string name="ai_consultation">AI问诊</string>
+    <string name="ai_consultation_title">AI医生问诊</string>
+    <string name="doctor_consultation">医生问诊</string>
+    <string name="book_appointment">预约挂号</string>
+    <string name="complete_purchase">完成购买</string>
+    <string name="pharmacy">药房</string>
+    <string name="end_consultation">结束问诊</string>
+    <string name="select_doctor">选择医生</string>
+    <string name="maybe_later">稍后再说</string>
+    <string name="type_message">请输入您的问题…</string>
+    <string name="welcome_message">您好！我是您的AI健康助手。今天有什么可以帮助您的？您可以向我咨询症状、药物或健康建议。</string>
+    <string name="ai_doctor_welcome">您好，我是您的AI医生。我将进行简短问诊以了解您的病情。请描述您的主要症状。</string>
+    <string name="purchase_complete_message">✅ 购买完成！您的药物将在2-3个工作日内送达。感谢您使用AIA健康。</string>
+    <string name="appointment_confirmed_message">✅ 预约已确认！\n\n医生：%1$s\n医院：%2$s\n时间：%3$s %4$s\n预约编号：#%5$d\n\n请提前15分钟到达。</string>
+    <string name="consult_suggestion">根据您的症状，您是否想咨询医生？</string>
+    <string name="your_prescription">您的处方</string>
+    <string name="find_doctors">找医生</string>
+    <string name="pharmacy_feature">药房</string>
+    <string name="claims">理赔</string>
+    <string name="records">病历</string>
+    <string name="hero_title">您的全面\n健康保障</string>
+    <string name="banner_title">AI健康助手</string>
+    <string name="banner_subtitle">咨询医疗问题，获取个性化建议</string>
+    <string name="hospital_name_hint">医院名称</string>
+    <string name="confirm_appointment">确认预约</string>
+    <string name="cancel">取消</string>
+    <string name="typing">正在输入…</string>
+    <string name="connected">已连接</string>
+    <string name="mute">静音</string>
+    <string name="camera">摄像头</string>
+</resources>

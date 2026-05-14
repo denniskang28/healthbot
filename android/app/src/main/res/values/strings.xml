@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AIA Health</string>
+    <string name="health_assistant">Health Assistant</string>
+    <string name="send">Send</string>
+    <string name="consult_now">Consult Now</string>
+    <string name="ai_consultation">AI Consultation</string>
+    <string name="ai_consultation_title">AI Medical Consultation</string>
+    <string name="doctor_consultation">Doctor Consultation</string>
+    <string name="book_appointment">Book Appointment</string>
+    <string name="complete_purchase">Complete Purchase</string>
+    <string name="pharmacy">Pharmacy</string>
+    <string name="end_consultation">End Consultation</string>
+    <string name="select_doctor">Select a Doctor</string>
+    <string name="maybe_later">Maybe Later</string>
+    <string name="type_message">Type your message...</string>
+    <string name="welcome_message">Hello! I\'m your AI health assistant. How can I help you today? You can ask me about symptoms, medications, or health advice.</string>
+    <string name="ai_doctor_welcome">Hello, I\'m your AI doctor. I\'ll conduct a brief consultation to understand your condition. Please describe your main symptoms.</string>
+    <string name="purchase_complete_message">✅ Purchase complete! Your medicines will be delivered in 2-3 business days. Thank you for using AIA Health.</string>
+    <string name="appointment_confirmed_message">✅ Appointment confirmed!\n\nDoctor: %1$s\nHospital: %2$s\nDate: %3$s at %4$s\nBooking ID: #%5$d\n\nPlease arrive 15 minutes early.</string>
+    <string name="consult_suggestion">Based on your symptoms, would you like to consult a doctor?</string>
+    <string name="your_prescription">Your Prescription</string>
+    <string name="find_doctors">Find Doctors</string>
+    <string name="pharmacy_feature">Pharmacy</string>
+    <string name="claims">Claims</string>
+    <string name="records">Records</string>
+    <string name="hero_title">Your Comprehensive\nHealth Coverage</string>
+    <string name="banner_title">AI Health Assistant</string>
+    <string name="banner_subtitle">Ask medical questions &amp; get personalized advice</string>
+    <string name="hospital_name_hint">Hospital Name</string>
+    <string name="confirm_appointment">Confirm Appointment</string>
+    <string name="cancel">Cancel</string>
+    <string name="typing">Typing…</string>
+    <string name="connected">Connected</string>
+    <string name="mute">Mute</string>
+    <string name="camera">Camera</string>
+</resources>

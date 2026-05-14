@@ -1,0 +1,127 @@
+import React, { createContext, useContext, useState } from 'react';
+
+type Lang = 'EN' | 'ZH';
+
+const translations = {
+  EN: {
+    appTitle: 'HealthBot Admin Console',
+    dashboard: 'Dashboard',
+    consultations: 'Consultations',
+    purchases: 'Purchases',
+    llmConfig: 'LLM Config',
+    totalUsers: 'Total Users',
+    activeSessions: 'Active Sessions',
+    todayConsultations: "Today's Consultations",
+    todayPurchases: "Today's Purchases",
+    userStatus: 'Real-time User Status',
+    IDLE: 'Idle',
+    CHATTING: 'Chatting',
+    AI_CONSULTATION: 'AI Consultation',
+    DOCTOR_CONSULTATION: 'Doctor Consultation',
+    APPOINTMENT: 'Appointment',
+    PHARMACY: 'Pharmacy',
+    ACTIVE: 'Active',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+    PENDING: 'Pending',
+    AI_CONSULTATION_label: 'AI',
+    DOCTOR_CONSULTATION_label: 'Doctor',
+    save: 'Save',
+    provider: 'Provider',
+    model: 'Model',
+    apiUrl: 'API URL',
+    apiKey: 'API Key',
+    systemPrompt: 'System Prompt',
+    active: 'Active',
+    userName: 'User',
+    phone: 'Phone',
+    state: 'State',
+    lastActive: 'Last Active',
+    type: 'Type',
+    status: 'Status',
+    startTime: 'Start Time',
+    prescription: 'Prescription',
+    amount: 'Amount',
+    purchasedAt: 'Purchased At',
+    medicines: 'Medicines',
+    configSaved: 'Configuration saved successfully',
+    switchLang: '中文',
+  },
+  ZH: {
+    appTitle: 'HealthBot 管理控制台',
+    dashboard: '仪表板',
+    consultations: '问诊记录',
+    purchases: '购药记录',
+    llmConfig: 'AI模型配置',
+    totalUsers: '总用户数',
+    activeSessions: '活跃会话',
+    todayConsultations: '今日问诊',
+    todayPurchases: '今日购药',
+    userStatus: '实时用户状态',
+    IDLE: '空闲',
+    CHATTING: '咨询中',
+    AI_CONSULTATION: 'AI问诊',
+    DOCTOR_CONSULTATION: '医生问诊',
+    APPOINTMENT: '预约',
+    PHARMACY: '药房',
+    ACTIVE: '进行中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消',
+    PENDING: '待处理',
+    AI_CONSULTATION_label: 'AI',
+    DOCTOR_CONSULTATION_label: '医生',
+    save: '保存',
+    provider: '服务商',
+    model: '模型',
+    apiUrl: 'API地址',
+    apiKey: 'API密钥',
+    systemPrompt: '系统提示词',
+    active: '启用',
+    userName: '用户',
+    phone: '电话',
+    state: '状态',
+    lastActive: '最后活跃',
+    type: '类型',
+    status: '状态',
+    startTime: '开始时间',
+    prescription: '处方',
+    amount: '金额',
+    purchasedAt: '购买时间',
+    medicines: '药品',
+    configSaved: '配置已成功保存',
+    switchLang: 'English',
+  }
+};
+
+interface LanguageContextType {
+  lang: Lang;
+  t: (key: keyof typeof translations.EN) => string;
+  toggleLang: () => void;
+}
+
+const LanguageContext = createContext<LanguageContextType | null>(null);
+
+export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const stored = (localStorage.getItem('admin_lang') as Lang) || 'EN';
+  const [lang, setLang] = useState<Lang>(stored);
+
+  const toggleLang = () => {
+    const next: Lang = lang === 'EN' ? 'ZH' : 'EN';
+    setLang(next);
+    localStorage.setItem('admin_lang', next);
+  };
+
+  const t = (key: keyof typeof translations.EN) => translations[lang][key] || key;
+
+  return (
+    <LanguageContext.Provider value={{ lang, t, toggleLang }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+
+export const useLang = () => {
+  const ctx = useContext(LanguageContext);
+  if (!ctx) throw new Error('useLang must be used within LanguageProvider');
+  return ctx;
+};
