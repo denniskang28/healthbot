@@ -58,7 +58,6 @@ class ChatbotActivity : AppCompatActivity() {
         }
 
         binding.btnSend.setOnClickListener { sendMessage() }
-        binding.etMessage.setOnEditorActionListener { _, _, _ -> sendMessage(); true }
 
         binding.btnLanguage.setOnClickListener {
             val newLang = if (LocaleHelper.getLanguage(this) == "en") "zh" else "en"
