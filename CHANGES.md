@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-05-16 · Bug 修复：推荐后闲聊重复触发路由
+
+**问题：** 超过 3 轮后每条消息都强制走分类流程，用户说"thank you"也会再次弹出预约/购药界面。
+
+**修复方案：** 在 `_CLASSIFY_TOOL` 加第四个选项 `CONTINUE_CHAT`，并在 `CLASSIFY_SYSTEM` 最顶部加优先规则——如果最新消息是致谢、确认或与症状无关的闲聊，选 `CONTINUE_CHAT`；代码收到后返回普通对话响应（`isComplete=False`），不触发任何路由 UI。
+
+**改动文件：** `llm-service/llm_client.py`
+
+| 改动点 | 内容 |
+|--------|------|
+| `_CLASSIFY_TOOL` enum | 新增 `CONTINUE_CHAT` 选项 |
+| `CLASSIFY_SYSTEM` prompt | 顶部新增 `CONTINUE_CHAT` 规则，覆盖致谢 / 确认 / 闲聊场景 |
+| `chat()` 函数 | `recommendation == "CONTINUE_CHAT"` 时直接返回 `ChatResponse(content=...)` 不带 `isComplete=True` |
+
+Backend 和 Android 无需改动，本来就只在 `isComplete=True` 时展示路由界面。
+
+---
+
 ## 2026-05-16 · Bug 修复：H2 数据库持久化 + 种子数据重复
 
 **问题：** 后端重启后数据全部丢失；即使改为文件存储，种子数据也会在每次重启时重复插入。
