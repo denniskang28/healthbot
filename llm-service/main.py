@@ -1,18 +1,18 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()  # must run before llm_client import so env vars are set at module level
+load_dotenv()  # must run before other imports so env vars are available to config_manager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from models import (
     ChatRequest, ChatResponse,
     AiConsultationRequest, AiConsultationResponse,
-    PrescriptionRequest, PrescriptionResponse
+    PrescriptionRequest, PrescriptionResponse,
+    LlmConfigRequest, LlmConfigResponse,
 )
+import config_manager
 import llm_client
 import mock_responses
-
-load_dotenv()
 
 app = FastAPI(title="HealthBot LLM Service", version="1.0.0")
 
@@ -24,23 +24,42 @@ app.add_middleware(
 )
 
 _chat_counters: dict[int, int] = {}
-_consultation_counters: dict[int, int] = {}
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "provider": llm_client.PROVIDER, "model": llm_client.MODEL}
+    return {"status": "ok", "provider": llm_client.get_provider(), "model": llm_client.get_model()}
+
+
+@app.get("/config", response_model=LlmConfigResponse)
+async def get_config():
+    return config_manager.safe_get()
+
+
+@app.put("/config", response_model=LlmConfigResponse)
+async def update_config(req: LlmConfigRequest):
+    config_manager.update(req.model_dump(exclude_none=True))
+    return config_manager.safe_get()
 
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
+    cfg = config_manager.get()
+    mock_script = cfg.get("mockScript", "MEDICATION")
+
+    if cfg.get("mockMode"):
+        count = _chat_counters.get(req.userId, 0)
+        _chat_counters[req.userId] = count + 1
+        return mock_responses.get_mock_chat_response(count, req.language, mock_script)
+
     result = await llm_client.chat(req.message, req.history, req.language)
     if result is not None:
         return result
 
+    # LLM unavailable — fall back to mock
     count = _chat_counters.get(req.userId, 0)
     _chat_counters[req.userId] = count + 1
-    return mock_responses.get_mock_chat_response(count, req.language)
+    return mock_responses.get_mock_chat_response(count, req.language, mock_script)
 
 
 @app.post("/ai-consultation", response_model=AiConsultationResponse)
@@ -48,9 +67,7 @@ async def ai_consultation(req: AiConsultationRequest):
     result = await llm_client.ai_consultation(req.message, req.history, req.language)
     if result is not None:
         return result
-
-    history_len = len(req.history)
-    return mock_responses.get_mock_ai_consultation_response(history_len, req.language)
+    return mock_responses.get_mock_ai_consultation_response(len(req.history), req.language)
 
 
 @app.post("/generate-prescription", response_model=PrescriptionResponse)
@@ -58,7 +75,6 @@ async def generate_prescription(req: PrescriptionRequest):
     result = await llm_client.generate_prescription(req.consultationSummary, req.language)
     if result is not None:
         return result
-
     medicines = mock_responses.MOCK_PRESCRIPTION_ZH if req.language == "ZH" else mock_responses.MOCK_PRESCRIPTION
     return PrescriptionResponse(medicines=medicines)
 

@@ -44,8 +44,14 @@ const translations = {
     amount: 'Amount',
     purchasedAt: 'Purchased At',
     medicines: 'Medicines',
-    configSaved: 'Configuration saved successfully',
+    configSaved: 'Configuration saved — LLM service updated',
     switchLang: '中文',
+    mockMode: 'Mock Mode',
+    mockModeHint: 'When enabled, uses predefined scripts instead of calling the LLM — for reliable demos',
+    mockScript: 'Demo Script',
+    mockScriptMedication: 'Case 1 — Pharmacy (common cold)',
+    mockScriptOnline: 'Case 2 — Online Consultation (migraines)',
+    mockScriptOffline: 'Case 3 — Offline Appointment (weight loss)',
   },
   ZH: {
     appTitle: 'HealthBot 管理控制台',
@@ -88,8 +94,14 @@ const translations = {
     amount: '金额',
     purchasedAt: '购买时间',
     medicines: '药品',
-    configSaved: '配置已成功保存',
+    configSaved: '配置已保存并通知LLM服务生效',
     switchLang: 'English',
+    mockMode: 'Mock模式',
+    mockModeHint: '开启后使用预设脚本而非真实LLM调用，确保演示路线可预测',
+    mockScript: '演示脚本',
+    mockScriptMedication: '案例1 — 线上药房（普通感冒）',
+    mockScriptOnline: '案例2 — 线上问诊（偏头痛）',
+    mockScriptOffline: '案例3 — 线下预约（体重下降）',
   }
 };
 

@@ -1,43 +1,42 @@
-import os
 import json
 from typing import List, Optional, Dict, Any
 
+import config_manager
 from models import ChatHistoryItem, ChatResponse, AiConsultationResponse, Medicine, PrescriptionResponse
 
-PROVIDER = os.getenv("PROVIDER", "anthropic").lower()
-MODEL = os.getenv("MODEL", "")
-
-_KEY_ENVS = {
-    "anthropic": "ANTHROPIC_API_KEY",
-    "openai":    "OPENAI_API_KEY",
-    "qwen":      "QWEN_API_KEY",
-}
-_DEFAULT_MODELS = {
-    "anthropic": "claude-sonnet-4-6",
-    "openai":    "gpt-4o",
-    "qwen":      "qwen-plus",
-}
-
-API_KEY = os.getenv(_KEY_ENVS.get(PROVIDER, ""), "")
-if not MODEL:
-    MODEL = _DEFAULT_MODELS.get(PROVIDER, "")
-
 _client = None
+
+
+def reload():
+    """Called by config_manager after config changes — forces client re-init."""
+    global _client
+    _client = None
+
+
+def get_provider() -> str:
+    return config_manager.get()["provider"]
+
+
+def get_model() -> str:
+    return config_manager.get()["model"]
 
 
 def get_client():
     global _client
     if _client is not None:
         return _client
-    if not API_KEY:
+    cfg = config_manager.get()
+    api_key = cfg.get("apiKey", "")
+    provider = cfg["provider"]
+    if not api_key:
         return None
-    if PROVIDER == "anthropic":
+    if provider == "anthropic":
         import anthropic
-        _client = anthropic.Anthropic(api_key=API_KEY)
-    elif PROVIDER in ("openai", "qwen"):
+        _client = anthropic.Anthropic(api_key=api_key)
+    elif provider in ("openai", "qwen"):
         from openai import OpenAI
-        kwargs: Dict[str, Any] = {"api_key": API_KEY}
-        if PROVIDER == "qwen":
+        kwargs: Dict[str, Any] = {"api_key": api_key}
+        if provider == "qwen":
             kwargs["base_url"] = "https://dashscope.aliyuncs.com/compatible-mode/v1"
         _client = OpenAI(**kwargs)
     return _client
@@ -68,9 +67,12 @@ def _call_tool(messages: List[Dict], system: Optional[str], tools: List[Dict], m
     if not cl:
         return None
 
-    if PROVIDER == "anthropic":
+    provider = get_provider()
+    model = get_model()
+
+    if provider == "anthropic":
         kwargs: Dict[str, Any] = dict(
-            model=MODEL,
+            model=model,
             max_tokens=max_tokens,
             tools=tools,
             tool_choice={"type": "any"},
@@ -84,13 +86,13 @@ def _call_tool(messages: List[Dict], system: Optional[str], tools: List[Dict], m
                 return block.input
         return None
 
-    elif PROVIDER in ("openai", "qwen"):
+    elif provider in ("openai", "qwen"):
         oai_messages = []
         if system:
             oai_messages.append({"role": "system", "content": system})
         oai_messages.extend(messages)
         response = cl.chat.completions.create(
-            model=MODEL,
+            model=model,
             max_tokens=max_tokens,
             messages=oai_messages,
             tools=_to_openai_tools(tools),

@@ -54,3 +54,19 @@ class PrescriptionRequest(BaseModel):
 
 class PrescriptionResponse(BaseModel):
     medicines: List[Medicine]
+
+
+class LlmConfigRequest(BaseModel):
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    apiKey: Optional[str] = None
+    mockMode: Optional[bool] = None
+    mockScript: Optional[str] = None  # MEDICATION | ONLINE_CONSULTATION | OFFLINE_APPOINTMENT
+
+
+class LlmConfigResponse(BaseModel):
+    provider: str
+    model: str
+    apiKeyMasked: str
+    mockMode: bool
+    mockScript: str

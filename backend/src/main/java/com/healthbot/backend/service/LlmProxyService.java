@@ -19,11 +19,12 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class LlmProxyService {
 
-    private final LlmConfigRepository llmConfigRepository;
+    @org.springframework.beans.factory.annotation.Value("${llm.service.url:http://localhost:8000}")
+    private String llmServiceUrl;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -31,9 +32,35 @@ public class LlmProxyService {
     public record AiConsultationResult(String content, boolean isComplete, List<MedicineDto> prescription) {}
 
     private String getApiUrl() {
-        return llmConfigRepository.findFirstByActiveTrue()
-                .map(LlmConfig::getApiUrl)
-                .orElse("http://localhost:8000");
+        return llmServiceUrl;
+    }
+
+    public java.util.Map<String, Object> fetchConfig() {
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> cfg = restTemplate.getForObject(getApiUrl() + "/config", java.util.Map.class);
+            return cfg != null ? cfg : java.util.Map.of();
+        } catch (Exception e) {
+            log.warn("Failed to fetch config from LLM service: {}", e.getMessage());
+            return java.util.Map.of();
+        }
+    }
+
+    public java.util.Map<String, Object> pushConfig(java.util.Map<String, Object> config) {
+        try {
+            var entity = new org.springframework.http.HttpEntity<>(config);
+            var response = restTemplate.exchange(
+                    getApiUrl() + "/config",
+                    org.springframework.http.HttpMethod.PUT,
+                    entity,
+                    java.util.Map.class);
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> body = response.getBody();
+            return body != null ? body : java.util.Map.of();
+        } catch (Exception e) {
+            log.warn("Failed to push config to LLM service: {}", e.getMessage());
+            return java.util.Map.of();
+        }
     }
 
     public ChatLlmResult chat(Long userId, String message, List<ChatMessage> history, String language) {

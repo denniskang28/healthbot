@@ -2,7 +2,52 @@
 
 ---
 
-## 2026-05-15 22:15 · LLM 多轮问诊与智能路由
+## 2026-05-16 00:10 · Admin 实时 LLM 配置 + Mock 模式
+
+**需求：** Admin 控制台可切换 LLM 服务商，配置立即生效无需重启；支持 Mock 模式，确保演示路线可预测；配置持久化，重启后继续生效。
+
+**数据流：**
+
+```
+Admin UI (React)
+  PUT /admin/llm-config  →  Backend (Spring Boot)
+                              └── PUT /config  →  llm-service (FastAPI)
+                                                    └── config_manager.update()
+                                                          ├── 写 config.json（持久化）
+                                                          └── llm_client.reload()（热重载）
+```
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `llm-service/config_manager.py` | **新增** — 配置读写单例；`get()` 从 `config.json` 或 `.env` 加载；`update()` 写文件并调 `llm_client.reload()`；`safe_get()` 脱敏 API key 供 Admin 显示 |
+| `llm-service/models.py` | 新增 `LlmConfigRequest`、`LlmConfigResponse` 数据模型 |
+| `llm-service/main.py` | 新增 `GET /config` 和 `PUT /config` 路由；`POST /chat` 检查 `mockMode`，开启时跳过真实 LLM 调用 |
+| `llm-service/llm_client.py` | 移除模块级 `PROVIDER`/`MODEL`/`API_KEY` 常量；改为运行时从 `config_manager` 读取；新增 `reload()` 重置客户端实例 |
+| `llm-service/mock_responses.py` | 重写 `MOCK_SCRIPTS` — 三套完整脚本（MEDICATION / ONLINE_CONSULTATION / OFFLINE_APPOINTMENT），每套含各轮回复、结论、处方、推荐医生 ID；`get_mock_chat_response()` 支持脚本参数 |
+| `backend/service/LlmProxyService.java` | 新增 `fetchConfig()` 和 `pushConfig()`，代理到 llm-service `/config`；LLM 服务 URL 通过 `@Value` 从 `application.yml` 读取 |
+| `backend/controller/AdminController.java` | 新增 `GET /admin/llm-config` 和 `PUT /admin/llm-config`，调用 `LlmProxyService` |
+| `admin/src/api/types.ts` | `LlmConfigDto` 新增 `mockMode`、`mockScript` 字段 |
+| `admin/src/context/LanguageContext.tsx` | 新增 EN/ZH 翻译键：`mockMode`、`mockModeHint`、`mockScript`、`mockScriptMedication`、`mockScriptOnline`、`mockScriptOffline` |
+| `admin/src/pages/LlmConfig.tsx` | 完全重写：顶部 Mock 模式开关（黄色区域）+ 脚本选择器；状态标签显示当前模式；Alert 提示「无需重启」；表单字段与新 DTO 对齐 |
+
+**Mock 脚本设计：**
+
+| 脚本 | 场景 | 推荐路由 |
+|------|------|---------|
+| `MEDICATION` | 普通感冒，3 轮后推荐购药 | → 线上药房 |
+| `ONLINE_CONSULTATION` | 反复头痛，3 轮后推荐线上问诊 | → 在线专家 |
+| `OFFLINE_APPOINTMENT` | 不明原因体重下降，3 轮后推荐线下预约 | → 线下预约 |
+
+**验证结果：**
+- `GET /config` → 返回当前配置（API key 脱敏为 `****...xxxx`）
+- `PUT /config` 切换 Mock 模式 → 立即生效，无需重启 llm-service 或 backend
+- Mock 模式下连续 3 轮 chat → `isComplete: true`，`recommendation` 精确匹配所选脚本
+
+---
+
+## 2026-05-15 22:50 · Bug 修复：千问配置 + 中文输入
 
 **完整的数据流：**
 

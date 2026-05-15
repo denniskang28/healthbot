@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthbot.backend.dto.*;
 import com.healthbot.backend.model.*;
 import com.healthbot.backend.repository.*;
+import com.healthbot.backend.service.LlmProxyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ public class AdminController {
     private final PurchaseRepository purchaseRepository;
     private final DoctorRepository doctorRepository;
     private final LlmConfigRepository llmConfigRepository;
+    private final LlmProxyService llmProxyService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/users/active")
@@ -93,28 +95,17 @@ public class AdminController {
     }
 
     @GetMapping("/llm-config")
-    public ResponseEntity<LlmConfigDto> getLlmConfig() {
-        return llmConfigRepository.findFirstByActiveTrue()
-                .map(this::toLlmConfigDto)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<Map<String, Object>> getLlmConfig() {
+        Map<String, Object> cfg = llmProxyService.fetchConfig();
+        if (cfg.isEmpty()) return ResponseEntity.status(503).build();
+        return ResponseEntity.ok(cfg);
     }
 
     @PutMapping("/llm-config")
-    public ResponseEntity<LlmConfigDto> updateLlmConfig(@RequestBody Map<String, Object> body) {
-        LlmConfig config = llmConfigRepository.findFirstByActiveTrue()
-                .orElse(new LlmConfig());
-
-        if (body.containsKey("provider")) config.setProvider(body.get("provider").toString());
-        if (body.containsKey("model")) config.setModel(body.get("model").toString());
-        if (body.containsKey("apiUrl")) config.setApiUrl(body.get("apiUrl").toString());
-        String newKey = body.containsKey("apiKey") ? body.get("apiKey").toString() : "";
-        if (!newKey.isBlank()) config.setApiKey(newKey);
-        if (body.containsKey("systemPrompt")) config.setSystemPrompt(body.get("systemPrompt").toString());
-        if (body.containsKey("active")) config.setActive(Boolean.valueOf(body.get("active").toString()));
-
-        llmConfigRepository.save(config);
-        return ResponseEntity.ok(toLlmConfigDto(config));
+    public ResponseEntity<Map<String, Object>> updateLlmConfig(@RequestBody Map<String, Object> body) {
+        Map<String, Object> result = llmProxyService.pushConfig(body);
+        if (result.isEmpty()) return ResponseEntity.status(503).build();
+        return ResponseEntity.ok(result);
     }
 
     private Map<String, Object> toUserDto(User u) {
@@ -146,13 +137,4 @@ public class AdminController {
                 p.getTotalAmount(), p.getPurchasedAt(), p.getCreatedAt());
     }
 
-    private LlmConfigDto toLlmConfigDto(LlmConfig c) {
-        String masked = "";
-        if (c.getApiKey() != null && c.getApiKey().length() > 4) {
-            masked = "****..." + c.getApiKey().substring(c.getApiKey().length() - 4);
-        } else if (c.getApiKey() != null && !c.getApiKey().isEmpty()) {
-            masked = "****";
-        }
-        return new LlmConfigDto(c.getId(), c.getProvider(), c.getModel(), c.getApiUrl(), masked, c.getSystemPrompt(), c.getActive());
-    }
 }

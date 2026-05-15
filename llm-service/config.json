@@ -1,0 +1,7 @@
+{
+  "provider": "qwen",
+  "model": "qwen-plus",
+  "apiKey": "sk-7a3c5fc9696b4e71910e4852de71b3ba",
+  "mockMode": true,
+  "mockScript": "ONLINE_CONSULTATION"
+}

@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Form, Input, Switch, Button, message, Typography, Spin, Divider, Tag, Select, Alert } from 'antd';
+import { Card, Form, Input, Switch, Button, message, Typography, Spin, Divider, Tag, Select, Alert, Radio } from 'antd';
 import { getLlmConfig, updateLlmConfig } from '../api/client';
 import type { LlmConfigDto } from '../api/types';
 import { useLang } from '../context/LanguageContext';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
 const PROVIDERS = [
-  { value: 'anthropic', label: 'Anthropic (Claude)',    color: 'blue'   },
-  { value: 'openai',    label: 'OpenAI (ChatGPT)',      color: 'green'  },
-  { value: 'qwen',      label: '阿里云 (千问 Qwen)',      color: 'orange' },
+  { value: 'anthropic', label: 'Anthropic (Claude)',  color: 'blue'   },
+  { value: 'openai',    label: 'OpenAI (ChatGPT)',    color: 'green'  },
+  { value: 'qwen',      label: '阿里云 (千问 Qwen)',   color: 'orange' },
 ];
 
 const MODEL_PRESETS: Record<string, string[]> = {
@@ -19,31 +18,26 @@ const MODEL_PRESETS: Record<string, string[]> = {
   qwen:      ['qwen-max', 'qwen-plus', 'qwen-turbo'],
 };
 
-const ENV_KEYS: Record<string, string> = {
-  anthropic: 'ANTHROPIC_API_KEY',
-  openai:    'OPENAI_API_KEY',
-  qwen:      'QWEN_API_KEY',
-};
-
 const LlmConfig: React.FC = () => {
   const [form] = Form.useForm();
   const [config, setConfig] = useState<LlmConfigDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [provider, setProvider] = useState<string>('anthropic');
+  const [provider, setProvider] = useState<string>('qwen');
+  const [mockMode, setMockMode] = useState(false);
   const { t } = useLang();
 
   useEffect(() => {
     getLlmConfig()
-      .then(data => {
+      .then((data: LlmConfigDto) => {
         setConfig(data);
-        setProvider(data.provider || 'anthropic');
+        setProvider(data.provider || 'qwen');
+        setMockMode(data.mockMode ?? false);
         form.setFieldsValue({
           provider: data.provider,
           model: data.model,
-          apiUrl: data.apiUrl,
-          systemPrompt: data.systemPrompt,
-          active: data.active,
+          mockMode: data.mockMode ?? false,
+          mockScript: data.mockScript ?? 'MEDICATION',
         });
       })
       .catch(() => {})
@@ -59,17 +53,17 @@ const LlmConfig: React.FC = () => {
   const onSave = async (values: Record<string, unknown>) => {
     setSaving(true);
     try {
-      const updated = await updateLlmConfig(values);
+      const updated = await updateLlmConfig(values) as LlmConfigDto;
       setConfig(updated);
+      setMockMode(updated.mockMode ?? false);
       message.success(t('configSaved'));
     } catch {
-      message.error('Failed to save configuration');
+      message.error('Failed to save — is the LLM service running?');
     } finally {
       setSaving(false);
     }
   };
 
-  // Build model options: presets + current DB value if not already included
   const buildModelOptions = (prov: string, current?: string) => {
     const presets = MODEL_PRESETS[prov] ?? [];
     const all = current && !presets.includes(current) ? [current, ...presets] : presets;
@@ -82,30 +76,45 @@ const LlmConfig: React.FC = () => {
 
   return (
     <Card title={<Title level={5} style={{ margin: 0 }}>{t('llmConfig')}</Title>} style={{ maxWidth: 720 }}>
+
+      {/* Current status tags */}
       {config && (
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 16 }}>
           <Text type="secondary">Current: </Text>
           <Tag color={providerMeta?.color ?? 'blue'}>{config.provider}</Tag>
           <Tag color="purple">{config.model}</Tag>
-          <Tag color={config.active ? 'green' : 'red'}>{config.active ? 'Active' : 'Inactive'}</Tag>
+          {config.mockMode
+            ? <Tag color="volcano">Mock Mode ON</Tag>
+            : <Tag color="green">Live LLM</Tag>}
         </div>
       )}
 
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="Provider & API Key are read by the llm-service via environment variables"
-        description={
-          provider
-            ? `Set PROVIDER=${provider} and ${ENV_KEYS[provider] ?? 'API_KEY'}=<your-key> when starting llm-service.`
-            : undefined
-        }
-      />
-
-      <Divider />
-
       <Form form={form} layout="vertical" onFinish={onSave}>
+
+        {/* Mock Mode — top of form, most important for demos */}
+        <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '16px 20px', marginBottom: 24 }}>
+          <Form.Item name="mockMode" valuePropName="checked" style={{ marginBottom: 8 }}>
+            <Switch
+              checkedChildren="Mock ON"
+              unCheckedChildren="Mock OFF"
+              onChange={setMockMode}
+            />
+          </Form.Item>
+          <Text type="secondary" style={{ fontSize: 12 }}>{t('mockModeHint')}</Text>
+
+          {mockMode && (
+            <Form.Item name="mockScript" label={t('mockScript')} style={{ marginTop: 16, marginBottom: 0 }}>
+              <Radio.Group>
+                <Radio.Button value="MEDICATION">{t('mockScriptMedication')}</Radio.Button>
+                <Radio.Button value="ONLINE_CONSULTATION">{t('mockScriptOnline')}</Radio.Button>
+                <Radio.Button value="OFFLINE_APPOINTMENT">{t('mockScriptOffline')}</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+          )}
+        </div>
+
+        <Divider orientation="left">LLM Provider</Divider>
+
         <Form.Item name="provider" label={t('provider')} rules={[{ required: true }]}>
           <Select
             options={PROVIDERS.map(p => ({ value: p.value, label: p.label }))}
@@ -117,32 +126,26 @@ const LlmConfig: React.FC = () => {
           <Select
             showSearch
             options={buildModelOptions(provider, config?.model)}
-            placeholder="Select a model"
             filterOption={(input, opt) =>
               String(opt?.label ?? '').toLowerCase().includes(input.toLowerCase())
             }
           />
         </Form.Item>
 
-        <Form.Item name="apiUrl" label={t('apiUrl')} rules={[{ required: true }]}>
-          <Input placeholder="http://localhost:8000" />
-        </Form.Item>
-
         <Form.Item
           name="apiKey"
           label={t('apiKey')}
-          extra={config?.apiKeyMasked ? `Current: ${config.apiKeyMasked}` : 'Leave empty to keep existing key'}
+          extra={config?.apiKeyMasked ? `Current: ${config.apiKeyMasked}` : 'No key configured'}
         >
           <Input.Password placeholder="Enter new API key (leave empty to keep existing)" />
         </Form.Item>
 
-        <Form.Item name="systemPrompt" label={t('systemPrompt')}>
-          <TextArea rows={5} placeholder="System prompt for the AI model..." />
-        </Form.Item>
-
-        <Form.Item name="active" label={t('active')} valuePropName="checked">
-          <Switch />
-        </Form.Item>
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Changes take effect immediately — no restart needed."
+        />
 
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={saving} size="large">

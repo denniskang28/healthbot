@@ -77,11 +77,9 @@ export interface PurchaseEntry {
 }
 
 export interface LlmConfigDto {
-  id: number;
   provider: string;
   model: string;
-  apiUrl: string;
   apiKeyMasked: string;
-  systemPrompt: string;
-  active: boolean;
+  mockMode: boolean;
+  mockScript: string; // MEDICATION | ONLINE_CONSULTATION | OFFLINE_APPOINTMENT
 }
