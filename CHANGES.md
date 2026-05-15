@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-05-16 · Android Chatbot 进入时加载历史记录
+
+**需求：** 每次打开 Chatbot 界面时，先展示最近 20 条历史消息，再显示问候语，让用户有完整的对话上下文。
+
+**改动文件：** `android/ChatbotActivity.kt`
+
+| 改动点 | 内容 |
+|--------|------|
+| `onCreate` | 移除同步添加欢迎语的逻辑，改为调用 `loadHistoryThenGreet()` |
+| `loadHistoryThenGreet()` | 新增方法：先调 `GET /api/chat/{userId}/history` 拉取历史消息逐条渲染，加载完（或失败时静默忽略）再追加欢迎语；`result_message` 追加在欢迎语之后 |
+
+API `getChatHistory` 在 `HealthBotApi.kt` 中已存在，无需新增接口。
+
+---
+
 ## 2026-05-16 · Bug 修复：推荐后闲聊重复触发路由
 
 **问题：** 超过 3 轮后每条消息都强制走分类流程，用户说"thank you"也会再次弹出预约/购药界面。
