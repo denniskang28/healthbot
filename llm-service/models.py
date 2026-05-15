@@ -7,6 +7,13 @@ class ChatHistoryItem(BaseModel):
     content: str
 
 
+class Medicine(BaseModel):
+    name: str
+    dosage: str
+    frequency: str
+    days: int
+
+
 class ChatRequest(BaseModel):
     userId: int
     message: str
@@ -24,13 +31,6 @@ class ChatResponse(BaseModel):
     conclusion: Optional[str] = None
     recommendation: Optional[str] = None   # ONLINE_CONSULTATION | OFFLINE_APPOINTMENT | MEDICATION
     prescription: Optional[List[Medicine]] = None
-
-
-class Medicine(BaseModel):
-    name: str
-    dosage: str
-    frequency: str
-    days: int
 
 
 class AiConsultationRequest(BaseModel):

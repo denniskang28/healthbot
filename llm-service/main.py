@@ -1,7 +1,9 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()  # must run before llm_client import so env vars are set at module level
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 from models import (
     ChatRequest, ChatResponse,
     AiConsultationRequest, AiConsultationResponse,
