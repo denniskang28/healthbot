@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,6 +39,11 @@ public class ChatController {
         User user = userRepository.findById(userId).orElse(null);
         String language = user != null ? user.getLanguage() : "EN";
 
+        // Fetch history BEFORE saving current message — avoids duplication in LLM context
+        List<ChatMessage> historyDesc = chatMessageRepository.findTop20ByUserIdOrderByTimestampDesc(userId);
+        List<ChatMessage> history = new ArrayList<>(historyDesc.subList(0, Math.min(historyDesc.size(), 10)));
+        Collections.reverse(history); // oldest-first so LLM sees chronological order
+
         // Save user message
         ChatMessage userMsg = new ChatMessage();
         userMsg.setUserId(userId);
@@ -47,10 +54,6 @@ public class ChatController {
 
         // Update session state
         sessionService.updateState(userId, "CHATTING");
-
-        // Get history
-        List<ChatMessage> history = chatMessageRepository.findTop20ByUserIdOrderByTimestampDesc(userId);
-        history = history.subList(0, Math.min(history.size(), 10));
 
         // Call LLM
         LlmProxyService.ChatLlmResult llmResult = llmProxyService.chat(userId, content, history, language);
