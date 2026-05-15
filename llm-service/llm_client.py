@@ -33,11 +33,13 @@ def get_client():
     if provider == "anthropic":
         import anthropic
         _client = anthropic.Anthropic(api_key=api_key)
-    elif provider in ("openai", "qwen"):
+    elif provider in ("openai", "qwen", "deepseek"):
         from openai import OpenAI
         kwargs: Dict[str, Any] = {"api_key": api_key}
         if provider == "qwen":
             kwargs["base_url"] = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        elif provider == "deepseek":
+            kwargs["base_url"] = "https://api.deepseek.com"
         _client = OpenAI(**kwargs)
     return _client
 
@@ -86,7 +88,7 @@ def _call_tool(messages: List[Dict], system: Optional[str], tools: List[Dict], m
                 return block.input
         return None
 
-    elif provider in ("openai", "qwen"):
+    elif provider in ("openai", "qwen", "deepseek"):
         oai_messages = []
         if system:
             oai_messages.append({"role": "system", "content": system})

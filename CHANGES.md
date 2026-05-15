@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-05-16 · 新增 DeepSeek LLM 支持
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `llm-service/llm_client.py` | `get_client()` 新增 `deepseek` 分支，使用 OpenAI 兼容 SDK，base_url 设为 `https://api.deepseek.com`；`_call_tool()` 的 OpenAI 路径扩展至 `deepseek` |
+| `admin/src/pages/LlmConfig.tsx` | `PROVIDERS` 新增 DeepSeek 选项；`MODEL_PRESETS` 新增 `deepseek-chat` 和 `deepseek-reasoner` |
+| `llm-service/CLAUDE.md` | 环境变量表新增 `DEEPSEEK_API_KEY` 说明 |
+
+**集成方式：** DeepSeek 兼容 OpenAI API 格式，复用现有 `openai` 代码路径，仅通过 `base_url` 区分。Admin 切换至 DeepSeek 后填入 API key 即生效，无需重启。
+
+---
+
 ## 2026-05-16 00:10 · Admin 实时 LLM 配置 + Mock 模式
 
 **需求：** Admin 控制台可切换 LLM 服务商，配置立即生效无需重启；支持 Mock 模式，确保演示路线可预测；配置持久化，重启后继续生效。

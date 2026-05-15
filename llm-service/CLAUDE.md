@@ -84,11 +84,12 @@ All LLM calls go through `_call_tool()` in `llm_client.py`:
 
 | Var | Default | Purpose |
 |-----|---------|---------|
-| `PROVIDER` | `anthropic` | `anthropic` / `openai` / `qwen` |
+| `PROVIDER` | `anthropic` | `anthropic` / `openai` / `qwen` / `deepseek` |
 | `MODEL` | provider default | Override model name |
 | `ANTHROPIC_API_KEY` | — | Required for anthropic |
 | `OPENAI_API_KEY` | — | Required for openai |
 | `QWEN_API_KEY` | — | Required for qwen (DashScope) |
+| `DEEPSEEK_API_KEY` | — | Required for deepseek (api.deepseek.com) |
 | `PORT` | `8000` | Server port |
 
 ## Key files

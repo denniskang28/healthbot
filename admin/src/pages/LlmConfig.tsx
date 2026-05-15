@@ -10,12 +10,14 @@ const PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic (Claude)',  color: 'blue'   },
   { value: 'openai',    label: 'OpenAI (ChatGPT)',    color: 'green'  },
   { value: 'qwen',      label: '阿里云 (千问 Qwen)',   color: 'orange' },
+  { value: 'deepseek',  label: 'DeepSeek',            color: 'geekblue' },
 ];
 
 const MODEL_PRESETS: Record<string, string[]> = {
   anthropic: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
   openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   qwen:      ['qwen-max', 'qwen-plus', 'qwen-turbo'],
+  deepseek:  ['deepseek-chat', 'deepseek-reasoner'],
 };
 
 const LlmConfig: React.FC = () => {
