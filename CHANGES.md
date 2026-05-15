@@ -36,3 +36,16 @@ MEDICATION          → 显示处方 → 线上药房
 | `android/res/values-zh/strings.xml` | 新增 7 个字符串（ZH） |
 
 ---
+
+## 2026-05-15 22:50 · Bug 修复：千问配置 + 中文输入
+
+**各组件改动：**
+
+| 文件 | 问题 | 修复 |
+|------|------|------|
+| `llm-service/models.py` | `ChatResponse` 引用 `Medicine` 时该类尚未定义，启动报 `NameError` | 将 `Medicine` 类移到 `ChatResponse` 之前 |
+| `llm-service/main.py` | `load_dotenv()` 在 `import llm_client` 之后执行，`.env` 中的 `PROVIDER` 等变量未生效，始终使用 `anthropic` 默认值 | 将 `load_dotenv()` 移至所有 import 之前 |
+| `android/res/layout/activity_chatbot.xml` | `inputType="text"` + `imeOptions="actionSend"` 导致中文拼音输入法在合字阶段触发发送，无法完成选字 | 改为 `inputType="textMultiLine"`，去掉 `imeOptions` |
+| `android/ChatbotActivity.kt` | `onEditorActionListener` 监听回车发送，与中文输入法换行冲突 | 移除该监听，发送仅通过 FAB 按钮触发 |
+
+---
