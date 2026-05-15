@@ -122,6 +122,12 @@ you have a preliminary assessment ready. Respond in the same language as the use
 CLASSIFY_SYSTEM = """You are a medical triage specialist. Based on the symptom conversation above,
 choose exactly one recommendation category using these explicit rules:
 
+CONTINUE_CHAT — choose this FIRST if the latest user message is not about symptoms:
+  • Expressions of thanks, acknowledgement, or closure ("thank you", "ok", "got it", "bye")
+  • Off-topic or casual conversation unrelated to health
+  • Simple confirmations after a recommendation has already been given
+  → When chosen, no conclusion or prescription is needed.
+
 MEDICATION — choose when ALL are true:
   • Acute onset (< 3 days), mild severity
   • Symptoms fit a clear common condition: cold, mild fever (<38.5°C), sore throat,
@@ -193,7 +199,7 @@ _CLASSIFY_TOOL = {
             },
             "recommendation": {
                 "type": "string",
-                "enum": ["MEDICATION", "ONLINE_CONSULTATION", "OFFLINE_APPOINTMENT"],
+                "enum": ["CONTINUE_CHAT", "MEDICATION", "ONLINE_CONSULTATION", "OFFLINE_APPOINTMENT"],
             },
             "prescription": {
                 "type": "array",
@@ -307,6 +313,11 @@ async def chat(message: str, history: List[ChatHistoryItem], language: str) -> O
         return None
 
     recommendation = classify_inp.get("recommendation")
+
+    # Non-medical follow-up (e.g. "thank you") — just continue the conversation
+    if recommendation == "CONTINUE_CHAT":
+        return ChatResponse(content=response_text)
+
     prescription = None
     if recommendation == "MEDICATION" and classify_inp.get("prescription"):
         prescription = [Medicine(**m) for m in classify_inp["prescription"]]
