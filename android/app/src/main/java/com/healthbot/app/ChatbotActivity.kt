@@ -43,19 +43,9 @@ class ChatbotActivity : AppCompatActivity() {
         binding.rvMessages.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.rvMessages.adapter = adapter
 
-        // Check for result message from other activities
         val resultMessage = intent.getStringExtra("result_message")
         val consultationId = intent.getLongExtra("consultation_id", -1L)
         if (consultationId > 0) currentConsultationId = consultationId
-
-        // Add welcome message
-        if (messages.isEmpty()) {
-            addMessage("ASSISTANT", getString(R.string.welcome_message))
-        }
-
-        if (resultMessage != null) {
-            addMessage("ASSISTANT", resultMessage)
-        }
 
         binding.btnSend.setOnClickListener { sendMessage() }
 
@@ -63,6 +53,19 @@ class ChatbotActivity : AppCompatActivity() {
             val newLang = if (LocaleHelper.getLanguage(this) == "en") "zh" else "en"
             LocaleHelper.setLocale(this, newLang)
             recreate()
+        }
+
+        loadHistoryThenGreet(resultMessage)
+    }
+
+    private fun loadHistoryThenGreet(resultMessage: String?) {
+        lifecycleScope.launch {
+            try {
+                val history = RetrofitClient.api.getChatHistory(userId)
+                history.forEach { msg -> addMessage(msg.role, msg.content) }
+            } catch (_: Exception) {}
+            addMessage("ASSISTANT", getString(R.string.welcome_message))
+            if (resultMessage != null) addMessage("ASSISTANT", resultMessage)
         }
     }
 
