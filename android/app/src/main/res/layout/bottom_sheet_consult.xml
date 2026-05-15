@@ -1,52 +1,145 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp"
     android:background="@color/surface">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="How would you like to consult?"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        android:layout_marginBottom="20dp" />
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnAiConsult"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginBottom="12dp"
-        android:text="🤖 AI Consultation"
-        android:visibility="gone"
-        android:backgroundTint="#7B1FA2" />
+        <!-- Title (shown when no conclusion yet) -->
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="How would you like to consult?"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnDoctorConsult"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginBottom="12dp"
-        android:text="👨‍⚕️ Online Doctor Consultation"
-        android:visibility="gone"
-        android:backgroundTint="@color/secondary" />
+        <!-- Conclusion card (shown when LLM has a preliminary assessment) -->
+        <LinearLayout
+            android:id="@+id/layoutConclusion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFF3E0"
+            android:padding="16dp"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnAppointment"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginBottom="12dp"
-        android:text="🏥 Book Hospital Appointment"
-        android:visibility="gone"
-        android:backgroundTint="@color/accent" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🩺 Initial Assessment"
+                android:id="@+id/tvAssessmentLabel"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#E65100"
+                android:layout_marginBottom="8dp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnLater"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="Maybe Later"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        android:textColor="@color/text_secondary" />
-</LinearLayout>
+            <TextView
+                android:id="@+id/tvConclusion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:lineSpacingMultiplier="1.4" />
+        </LinearLayout>
+
+        <!-- Prescription list (shown when recommendation = MEDICATION) -->
+        <LinearLayout
+            android:id="@+id/layoutPrescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvPrescriptionLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💊 Recommended Medicines"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:id="@+id/llMedicines"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Action buttons — only one is shown depending on recommendation -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOnlineConsult"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:text="🎥 Online Expert Consultation"
+            android:visibility="gone"
+            android:backgroundTint="@color/secondary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOfflineAppointment"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:text="🏥 Book In-Person Appointment"
+            android:visibility="gone"
+            android:backgroundTint="@color/accent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPharmacy"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:text="🛒 Go to Online Pharmacy"
+            android:visibility="gone"
+            android:backgroundTint="#2E7D32" />
+
+        <!-- Legacy buttons kept for non-conclusion suggestions -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAiConsult"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:text="🤖 AI Consultation"
+            android:visibility="gone"
+            android:backgroundTint="#7B1FA2" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDoctorConsult"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:text="👨‍⚕️ Online Doctor Consultation"
+            android:visibility="gone"
+            android:backgroundTint="@color/secondary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAppointment"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="12dp"
+            android:text="🏥 Book Hospital Appointment"
+            android:visibility="gone"
+            android:backgroundTint="@color/accent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLater"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Maybe Later"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:textColor="@color/text_secondary" />
+    </LinearLayout>
+</ScrollView>

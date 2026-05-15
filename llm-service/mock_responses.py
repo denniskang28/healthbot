@@ -40,22 +40,27 @@ MOCK_PRESCRIPTION_ZH = [
 def get_mock_chat_response(message_count: int, language: str) -> ChatResponse:
     responses = MOCK_CHAT_RESPONSES_ZH if language == "ZH" else MOCK_CHAT_RESPONSES_EN
     idx = min(message_count, len(responses) - 1)
-    suggest = message_count >= 2
+    is_complete = message_count >= 2
 
-    if suggest and language == "ZH":
-        content = responses[idx] + "\n\n建议：您可以选择AI问诊或在线医生问诊。"
-    elif suggest:
-        content = responses[idx] + "\n\nI recommend either an AI consultation or speaking with one of our doctors online."
-    else:
-        content = responses[idx]
+    if is_complete:
+        if language == "ZH":
+            return ChatResponse(
+                content="根据您描述的症状，我已经有了初步判断。",
+                isComplete=True,
+                conclusion="根据您的症状描述，您可能患有轻度上呼吸道感染（普通感冒）。症状包括鼻塞、咽痛和轻微发烧，属于常见病毒性感染。建议对症治疗，多休息，多饮水。",
+                recommendation="MEDICATION",
+                prescription=MOCK_PRESCRIPTION_ZH,
+            )
+        else:
+            return ChatResponse(
+                content="Based on what you've described, I have an initial assessment for you.",
+                isComplete=True,
+                conclusion="Based on your symptoms, you likely have a mild upper respiratory infection (common cold). The combination of nasal congestion, sore throat, and low-grade fever is consistent with a viral infection. Rest, hydration, and symptomatic treatment should help you recover within 7–10 days.",
+                recommendation="MEDICATION",
+                prescription=MOCK_PRESCRIPTION,
+            )
 
-    return ChatResponse(
-        content=content,
-        suggestConsultation=suggest,
-        consultationType="DOCTOR" if suggest else None,
-        suggestAppointment=False,
-        recommendedDoctorIds=[2, 1] if suggest else [],
-    )
+    return ChatResponse(content=responses[idx])
 
 
 def get_mock_ai_consultation_response(history_length: int, language: str) -> AiConsultationResponse:

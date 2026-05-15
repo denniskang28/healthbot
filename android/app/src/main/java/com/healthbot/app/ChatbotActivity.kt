@@ -3,6 +3,7 @@ package com.healthbot.app
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -88,12 +89,71 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private fun handleActions(actions: ActionsDto) {
-        if (!actions.suggestConsultation && !actions.suggestAppointment) return
+        val hasConclusion = actions.isComplete && actions.conclusion != null
+        val hasLegacySuggestion = !hasConclusion && (actions.suggestConsultation || actions.suggestAppointment)
+        if (!hasConclusion && !hasLegacySuggestion) return
 
         val dialog = BottomSheetDialog(this)
         val sheetBinding = BottomSheetConsultBinding.inflate(layoutInflater)
         dialog.setContentView(sheetBinding.root)
 
+        if (hasConclusion) {
+            showConclusionSheet(sheetBinding, dialog, actions)
+        } else {
+            showLegacySuggestionSheet(sheetBinding, dialog, actions)
+        }
+
+        sheetBinding.btnLater.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
+
+    private fun showConclusionSheet(sheetBinding: BottomSheetConsultBinding, dialog: BottomSheetDialog, actions: ActionsDto) {
+        sheetBinding.layoutConclusion.visibility = View.VISIBLE
+        sheetBinding.tvAssessmentLabel.text = getString(R.string.assessment_label)
+        sheetBinding.tvConclusion.text = actions.conclusion
+
+        when (actions.recommendation) {
+            "ONLINE_CONSULTATION" -> {
+                sheetBinding.btnOnlineConsult.visibility = View.VISIBLE
+                sheetBinding.btnOnlineConsult.text = getString(R.string.online_expert_consult)
+                sheetBinding.btnOnlineConsult.setOnClickListener {
+                    dialog.dismiss()
+                    startDoctorConsultation(actions.recommendedDoctorIds)
+                }
+            }
+            "OFFLINE_APPOINTMENT" -> {
+                sheetBinding.btnOfflineAppointment.visibility = View.VISIBLE
+                sheetBinding.btnOfflineAppointment.text = getString(R.string.book_in_person)
+                sheetBinding.btnOfflineAppointment.setOnClickListener {
+                    dialog.dismiss()
+                    startAppointment()
+                }
+            }
+            "MEDICATION" -> {
+                actions.prescription?.let { medicines ->
+                    sheetBinding.layoutPrescription.visibility = View.VISIBLE
+                    sheetBinding.tvPrescriptionLabel.text = getString(R.string.recommended_medicines)
+                    medicines.forEach { med ->
+                        val tv = TextView(this).apply {
+                            text = "• ${med.name} ${med.dosage} — ${med.frequency} × ${med.days}d"
+                            textSize = 13f
+                            setPadding(0, 4, 0, 4)
+                        }
+                        sheetBinding.llMedicines.addView(tv)
+                    }
+                }
+                sheetBinding.btnPharmacy.visibility = View.VISIBLE
+                sheetBinding.btnPharmacy.text = getString(R.string.go_to_pharmacy)
+                sheetBinding.btnPharmacy.setOnClickListener {
+                    dialog.dismiss()
+                    startPharmacyWithPrescription(actions.prescription ?: emptyList())
+                }
+            }
+        }
+    }
+
+    private fun showLegacySuggestionSheet(sheetBinding: BottomSheetConsultBinding, dialog: BottomSheetDialog, actions: ActionsDto) {
+        sheetBinding.tvTitle.visibility = View.VISIBLE
         if (actions.suggestConsultation && actions.consultationType == "AI") {
             sheetBinding.btnAiConsult.visibility = View.VISIBLE
         } else if (actions.suggestConsultation) {
@@ -103,22 +163,28 @@ class ChatbotActivity : AppCompatActivity() {
         if (actions.suggestAppointment || actions.suggestConsultation) {
             sheetBinding.btnAppointment.visibility = View.VISIBLE
         }
+        sheetBinding.btnAiConsult.setOnClickListener { dialog.dismiss(); startAiConsultation() }
+        sheetBinding.btnDoctorConsult.setOnClickListener { dialog.dismiss(); startDoctorConsultation(actions.recommendedDoctorIds) }
+        sheetBinding.btnAppointment.setOnClickListener { dialog.dismiss(); startAppointment() }
+    }
 
-        sheetBinding.btnAiConsult.setOnClickListener {
-            dialog.dismiss()
-            startAiConsultation()
+    private fun startPharmacyWithPrescription(medicines: List<Medicine>) {
+        lifecycleScope.launch {
+            try {
+                val consultation = RetrofitClient.api.createConsultation(
+                    ConsultationRequest(userId, null, "AI_CONSULTATION")
+                )
+                val prescription = RetrofitClient.api.createPrescription(
+                    PrescriptionRequest(consultation.id, medicines)
+                )
+                val intent = Intent(this@ChatbotActivity, PharmacyActivity::class.java)
+                intent.putExtra("prescription_id", prescription.id)
+                startActivityForResult(intent, REQUEST_PHARMACY)
+            } catch (e: Exception) {
+                val intent = Intent(this@ChatbotActivity, PharmacyActivity::class.java)
+                startActivityForResult(intent, REQUEST_PHARMACY)
+            }
         }
-        sheetBinding.btnDoctorConsult.setOnClickListener {
-            dialog.dismiss()
-            startDoctorConsultation(actions.recommendedDoctorIds)
-        }
-        sheetBinding.btnAppointment.setOnClickListener {
-            dialog.dismiss()
-            startAppointment()
-        }
-        sheetBinding.btnLater.setOnClickListener { dialog.dismiss() }
-
-        dialog.show()
     }
 
     private fun startAiConsultation() {
@@ -184,5 +250,6 @@ class ChatbotActivity : AppCompatActivity() {
         const val REQUEST_AI_CONSULT = 101
         const val REQUEST_DOCTOR_CONSULT = 102
         const val REQUEST_APPOINTMENT = 103
+        const val REQUEST_PHARMACY = 104
     }
 }

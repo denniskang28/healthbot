@@ -34,4 +34,11 @@
     <string name="connected">已连接</string>
     <string name="mute">静音</string>
     <string name="camera">摄像头</string>
+    <string name="initial_assessment">初步诊断</string>
+    <string name="recommended_medicines">建议用药</string>
+    <string name="online_expert_consult">🎥 线上专家问诊</string>
+    <string name="book_in_person">🏥 预约线下就医</string>
+    <string name="go_to_pharmacy">🛒 前往线上药房</string>
+    <string name="assessment_label">🩺 初步诊断</string>
+    <string name="disclaimer">⚠️ 以上为AI初步评估，不构成医疗诊断，请遵医嘱。</string>
 </resources>

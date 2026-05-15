@@ -14,7 +14,11 @@ data class ActionsDto(
     val suggestConsultation: Boolean = false,
     val consultationType: String? = null,
     val suggestAppointment: Boolean = false,
-    val recommendedDoctorIds: List<Long> = emptyList()
+    val recommendedDoctorIds: List<Long> = emptyList(),
+    val isComplete: Boolean = false,
+    val conclusion: String? = null,
+    val recommendation: String? = null,  // ONLINE_CONSULTATION | OFFLINE_APPOINTMENT | MEDICATION
+    val prescription: List<Medicine>? = null
 )
 
 data class ChatResponseDto(

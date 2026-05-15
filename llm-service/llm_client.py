@@ -106,24 +106,29 @@ def _call_tool(messages: List[Dict], system: Optional[str], tools: List[Dict], m
 
 # ── System prompts ────────────────────────────────────────────────────────────
 
-CHAT_SYSTEM_PROMPT = """You are a helpful medical assistant for an insurance company health app called AIA Health.
-You help users with medical questions, provide general health information, and guide them to appropriate care.
+CHAT_SYSTEM_PROMPT = """You are a professional medical assistant for AIA Health insurance app.
+Your role is to gather information about the user's symptoms through natural conversation and then provide a preliminary assessment.
 
-When responding:
-- Be empathetic, clear, and professional
-- Provide helpful general information but always recommend professional medical advice for serious symptoms
-- If the user describes serious, complex, or persistent symptoms, suggest they consult a doctor (DOCTOR consultation)
-- If the user has a minor/simple issue, suggest AI consultation first
-- If the user asks about visiting a hospital or wants to see a doctor in person, suggest appointment booking
-- Keep responses concise (2-4 sentences)
-- Respond in the same language as the user's message
+## Conversation process
+- Turn 1-3: Ask targeted questions to understand symptoms (type, severity, duration, associated symptoms).
+- Turn 4+: Once you have enough information, provide a preliminary assessment.
+  Set isComplete=true, write a clear conclusion, and choose a recommendation.
+
+## Recommendation types (choose ONE when isComplete=true)
+- ONLINE_CONSULTATION: Symptoms are significant and need a real doctor soon, but not an emergency. User can speak to an online specialist.
+- OFFLINE_APPOINTMENT: Symptoms suggest a condition that requires in-person examination, lab work, or physical assessment.
+- MEDICATION: Symptoms are mild, clear-cut (e.g., common cold, mild allergy, minor pain), and safe to treat with OTC or simple prescription drugs. Provide a prescription.
+
+## Rules
+- Keep each response concise (2-4 sentences).
+- Respond in the same language as the user.
+- Never set isComplete=true on the first 2 exchanges (history must have ≥4 messages).
+- conclusion must be a professional summary of your assessment (2-3 sentences), written for the patient.
+- If recommendation=MEDICATION, always provide a prescription array.
+- For serious/emergency symptoms (chest pain, stroke signs, difficulty breathing) recommend OFFLINE_APPOINTMENT and urge immediate care.
 
 Doctor specialties available (by ID):
-1: Cardiology (heart issues, chest pain, blood pressure)
-2: General Practice (common illness, fever, general concerns)
-3: Dermatology (skin issues, rashes, hair)
-4: Neurology (headaches, dizziness, neurological symptoms)
-5: Pediatrics (children's health)"""
+1: Cardiology  2: General Practice  3: Dermatology  4: Neurology  5: Pediatrics"""
 
 AI_CONSULTATION_SYSTEM = """You are an AI doctor conducting a structured medical consultation.
 Your goal is to gather sufficient information about the patient's condition through targeted questions, then provide a diagnosis and prescription.
@@ -143,34 +148,48 @@ Respond in the same language as the patient."""
 
 _CHAT_TOOL = {
     "name": "determine_action",
-    "description": "After responding to the user, determine what action to suggest",
+    "description": "Respond to the user and, once enough information is gathered, provide a preliminary assessment",
     "input_schema": {
         "type": "object",
         "properties": {
             "responseText": {
                 "type": "string",
-                "description": "The response to show the user",
+                "description": "The conversational response to show the user",
             },
-            "suggestConsultation": {
+            "isComplete": {
                 "type": "boolean",
-                "description": "Whether to suggest a medical consultation",
+                "description": "True only when you have gathered enough symptom information to make a preliminary assessment (requires ≥4 prior messages in history)",
             },
-            "consultationType": {
+            "conclusion": {
                 "type": "string",
-                "enum": ["AI", "DOCTOR"],
-                "description": "Type of consultation to suggest (omit if no consultation)",
+                "description": "Preliminary assessment summary for the patient (2-3 sentences). Required when isComplete=true.",
             },
-            "suggestAppointment": {
-                "type": "boolean",
-                "description": "Whether to suggest booking a hospital appointment",
+            "recommendation": {
+                "type": "string",
+                "enum": ["ONLINE_CONSULTATION", "OFFLINE_APPOINTMENT", "MEDICATION"],
+                "description": "The recommended next step. Required when isComplete=true.",
+            },
+            "prescription": {
+                "type": "array",
+                "description": "List of medicines. Required when recommendation=MEDICATION.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name":      {"type": "string"},
+                        "dosage":    {"type": "string"},
+                        "frequency": {"type": "string"},
+                        "days":      {"type": "integer"},
+                    },
+                    "required": ["name", "dosage", "frequency", "days"],
+                },
             },
             "recommendedDoctorIds": {
                 "type": "array",
                 "items": {"type": "integer"},
-                "description": "List of doctor IDs to recommend (1-5)",
+                "description": "Relevant doctor IDs (1-5) when recommendation is ONLINE_CONSULTATION or OFFLINE_APPOINTMENT",
             },
         },
-        "required": ["responseText", "suggestConsultation", "suggestAppointment"],
+        "required": ["responseText", "isComplete"],
     },
 }
 
@@ -235,19 +254,30 @@ _PRESCRIPTION_TOOL = {
 # ── Public API ────────────────────────────────────────────────────────────────
 
 async def chat(message: str, history: List[ChatHistoryItem], language: str) -> Optional[ChatResponse]:
-    messages = [{"role": h.role, "content": h.content} for h in history[-10:]]
+    messages = [{"role": h.role, "content": h.content} for h in history[-12:]]
     messages.append({"role": "user", "content": message})
 
-    inp = _call_tool(messages, CHAT_SYSTEM_PROMPT, [_CHAT_TOOL])
+    inp = _call_tool(messages, CHAT_SYSTEM_PROMPT, [_CHAT_TOOL], max_tokens=1500)
     if inp is None:
         return None
 
+    is_complete = inp.get("isComplete", False)
+    recommendation = inp.get("recommendation") if is_complete else None
+
+    prescription = None
+    if recommendation == "MEDICATION" and inp.get("prescription"):
+        prescription = [Medicine(**m) for m in inp["prescription"]]
+
     return ChatResponse(
         content=inp.get("responseText", ""),
-        suggestConsultation=inp.get("suggestConsultation", False),
-        consultationType=inp.get("consultationType"),
-        suggestAppointment=inp.get("suggestAppointment", False),
+        suggestConsultation=False,
+        consultationType=None,
+        suggestAppointment=False,
         recommendedDoctorIds=inp.get("recommendedDoctorIds", []),
+        isComplete=is_complete,
+        conclusion=inp.get("conclusion") if is_complete else None,
+        recommendation=recommendation,
+        prescription=prescription,
     )
 
 

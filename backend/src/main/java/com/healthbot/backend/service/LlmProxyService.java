@@ -67,7 +67,26 @@ public class LlmProxyService {
                 for (JsonNode n : idsNode) doctorIds.add(n.asLong());
             }
 
-            ActionsDto actions = new ActionsDto(suggestConsultation, consultationType, suggestAppointment, doctorIds);
+            boolean isComplete = response.path("isComplete").asBoolean(false);
+            String conclusion = response.path("conclusion").isNull() ? null : response.path("conclusion").asText(null);
+            String recommendation = response.path("recommendation").isNull() ? null : response.path("recommendation").asText(null);
+
+            List<MedicineDto> prescription = null;
+            JsonNode rxNode = response.path("prescription");
+            if (!rxNode.isNull() && rxNode.isArray()) {
+                prescription = new ArrayList<>();
+                for (JsonNode m : rxNode) {
+                    prescription.add(new MedicineDto(
+                            m.path("name").asText(),
+                            m.path("dosage").asText(),
+                            m.path("frequency").asText(),
+                            m.path("days").asInt()
+                    ));
+                }
+            }
+
+            ActionsDto actions = new ActionsDto(suggestConsultation, consultationType, suggestAppointment, doctorIds,
+                    isComplete, conclusion, recommendation, prescription);
             return new ChatLlmResult(content, actions);
 
         } catch (Exception e) {
@@ -122,7 +141,7 @@ public class LlmProxyService {
     }
 
     private ChatLlmResult fallbackChatResult() {
-        ActionsDto actions = new ActionsDto(false, null, false, List.of());
+        ActionsDto actions = new ActionsDto(false, null, false, List.of(), false, null, null, null);
         return new ChatLlmResult("I'm here to help with your health questions. Could you tell me more about your symptoms or concerns?", actions);
     }
 

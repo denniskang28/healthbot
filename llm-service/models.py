@@ -20,6 +20,10 @@ class ChatResponse(BaseModel):
     consultationType: Optional[str] = None
     suggestAppointment: bool = False
     recommendedDoctorIds: List[int] = []
+    isComplete: bool = False
+    conclusion: Optional[str] = None
+    recommendation: Optional[str] = None   # ONLINE_CONSULTATION | OFFLINE_APPOINTMENT | MEDICATION
+    prescription: Optional[List[Medicine]] = None
 
 
 class Medicine(BaseModel):

@@ -34,4 +34,11 @@
     <string name="connected">Connected</string>
     <string name="mute">Mute</string>
     <string name="camera">Camera</string>
+    <string name="initial_assessment">Initial Assessment</string>
+    <string name="recommended_medicines">Recommended Medicines</string>
+    <string name="online_expert_consult">🎥 Online Expert Consultation</string>
+    <string name="book_in_person">🏥 Book In-Person Appointment</string>
+    <string name="go_to_pharmacy">🛒 Go to Online Pharmacy</string>
+    <string name="assessment_label">🩺 Initial Assessment</string>
+    <string name="disclaimer">⚠️ This is an AI-generated preliminary assessment. Always consult a licensed physician for medical decisions.</string>
 </resources>
