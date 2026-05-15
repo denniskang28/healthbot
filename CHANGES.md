@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-05-16 · Bug 修复：Chat 历史记录顺序与重复问题
+
+**问题根因：** `ChatController` 在保存当前用户消息**之后**才查询历史记录，且查询使用降序排列，导致两个并发 bug。
+
+| Bug | 现象 | 修复 |
+|-----|------|------|
+| 历史顺序反转 | `findTop20ByUserIdOrderByTimestampDesc` 返回最新在前，LLM 收到的对话是倒序的，上下文理解错误 | 查完后 `Collections.reverse()` 变成时间正序 |
+| 当前消息重复 | 用户消息先存入 DB，再查历史时已包含在内，`llm_client.py` 又额外 append 一次，LLM 看到最后一条消息出现两次 | 将历史查询移到 `save(userMsg)` 之前，确保当前消息不在 history 里 |
+
+**改动文件：** `backend/controller/ChatController.java`
+
+---
+
 ## 2026-05-16 · 新增 DeepSeek LLM 支持
 
 **各组件改动：**
