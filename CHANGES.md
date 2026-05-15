@@ -49,3 +49,39 @@ MEDICATION          → 显示处方 → 线上药房
 | `android/ChatbotActivity.kt` | `onEditorActionListener` 监听回车发送，与中文输入法换行冲突 | 移除该监听，发送仅通过 FAB 按钮触发 |
 
 ---
+
+## 2026-05-15 23:30 · 修复：LLM 路由不稳定
+
+**问题根因：** 原实现用一次 LLM 调用同时决定「何时结束对话」和「推荐哪条路」，两个决策都不可靠，导致三个 demo 案例经常走错流程。
+
+**修复方案：时机由代码控制，分类用独立调用**
+
+```
+原来（不稳定）                      现在（稳定）
+──────────────────────────         ──────────────────────────────────
+1次LLM调用                          Turn 1-2: 简单对话（_CHAT_RESPONSE_TOOL）
+  → 决定isComplete（不稳定）             只生成 responseText，无路由逻辑
+  → 决定recommendation（不稳定）    Turn 3:  代码强制触发
+                                       Step 1: 生成"已有初步判断"回复
+                                       Step 2: 独立分类调用（_CLASSIFY_TOOL）
+                                              用明确规则决定推荐类型
+```
+
+**分类规则（写入 CLASSIFY_SYSTEM prompt）：**
+
+| 推荐类型 | 触发条件 |
+|----------|---------|
+| `MEDICATION` | 急性起病（<3天）、症状轻微明确（感冒/轻度过敏/轻微疼痛）、无慢性病史 |
+| `OFFLINE_APPOINTMENT` | 不明原因体重下降、夜间盗汗、疑似代谢/激素问题、胸痛、需要体检或化验 |
+| `ONLINE_CONSULTATION` | 其余情况（反复发作、中度严重、专科建议但无需立即检查） |
+
+不确定时：ONLINE vs OFFLINE → 选 OFFLINE；MEDICATION vs ONLINE → 选 ONLINE。
+
+**各文件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `llm-service/llm_client.py` | 拆分为 `_CHAT_RESPONSE_TOOL`（对话）和 `_CLASSIFY_TOOL`（分类）；`chat()` 重写为两步调用；新增 `CONCLUDE_AFTER_EXCHANGES=3` 常量控制触发时机 |
+| `llm-service/mock_responses.py` | mock 触发条件从 `>=3` 改为 `>=2`（0-indexed 计数器对齐第3轮） |
+
+---
