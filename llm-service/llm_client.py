@@ -107,28 +107,44 @@ def _call_tool(messages: List[Dict], system: Optional[str], tools: List[Dict], m
 # ── System prompts ────────────────────────────────────────────────────────────
 
 CHAT_SYSTEM_PROMPT = """You are a professional medical assistant for AIA Health insurance app.
-Your role is to gather information about the user's symptoms through natural conversation and then provide a preliminary assessment.
+Gather information about the user's symptoms through natural conversation.
+Ask one focused follow-up question per turn (type, severity, duration, associated symptoms, medications).
+Keep responses to 2-3 sentences. Respond in the same language as the user."""
 
-## Conversation process
-- Turn 1-3: Ask targeted questions to understand symptoms (type, severity, duration, associated symptoms).
-- Turn 4+: Once you have enough information, provide a preliminary assessment.
-  Set isComplete=true, write a clear conclusion, and choose a recommendation.
+CHAT_CONCLUDE_SYSTEM = """You are a medical assistant for AIA Health.
+The user has described their symptoms over several messages. Write one sentence telling them
+you have a preliminary assessment ready. Respond in the same language as the user."""
 
-## Recommendation types (choose ONE when isComplete=true)
-- ONLINE_CONSULTATION: Symptoms are significant and need a real doctor soon, but not an emergency. User can speak to an online specialist.
-- OFFLINE_APPOINTMENT: Symptoms suggest a condition that requires in-person examination, lab work, or physical assessment.
-- MEDICATION: Symptoms are mild, clear-cut (e.g., common cold, mild allergy, minor pain), and safe to treat with OTC or simple prescription drugs. Provide a prescription.
+CLASSIFY_SYSTEM = """You are a medical triage specialist. Based on the symptom conversation above,
+choose exactly one recommendation category using these explicit rules:
 
-## Rules
-- Keep each response concise (2-4 sentences).
-- Respond in the same language as the user.
-- Never set isComplete=true on the first 2 exchanges (history must have ≥4 messages).
-- conclusion must be a professional summary of your assessment (2-3 sentences), written for the patient.
-- If recommendation=MEDICATION, always provide a prescription array.
-- For serious/emergency symptoms (chest pain, stroke signs, difficulty breathing) recommend OFFLINE_APPOINTMENT and urge immediate care.
+MEDICATION — choose when ALL are true:
+  • Acute onset (< 3 days), mild severity
+  • Symptoms fit a clear common condition: cold, mild fever (<38.5°C), sore throat,
+    nasal congestion, mild allergy, minor muscle/joint pain, mild gastroenteritis
+  • No underlying chronic conditions or red flags mentioned
+  • Safe to treat with standard OTC or first-line prescription drugs
+  → If chosen, provide a specific prescription array.
 
-Doctor specialties available (by ID):
-1: Cardiology  2: General Practice  3: Dermatology  4: Neurology  5: Pediatrics"""
+OFFLINE_APPOINTMENT — choose when ANY is true:
+  • Unexplained weight loss or gain
+  • Night sweats or persistent fatigue without clear cause
+  • Suspected metabolic or hormonal issue (diabetes, thyroid)
+  • Chest pain, palpitations, or shortness of breath
+  • Neurological symptoms (vision changes, numbness, coordination issues)
+  • Symptoms that require physical exam, imaging, or blood/lab tests
+
+ONLINE_CONSULTATION — choose for everything else:
+  • Recurring symptoms not clearly resolved by OTC drugs
+  • Moderate severity where specialist advice is needed
+  • Conditions manageable remotely without immediate tests
+  → Examples: recurring migraines, skin conditions, persistent cough >2 weeks, anxiety
+
+Decision rules when unsure:
+  ONLINE_CONSULTATION vs OFFLINE_APPOINTMENT → choose OFFLINE_APPOINTMENT
+  MEDICATION vs ONLINE_CONSULTATION → choose ONLINE_CONSULTATION
+
+Write the conclusion in the same language the user used in the conversation."""
 
 AI_CONSULTATION_SYSTEM = """You are an AI doctor conducting a structured medical consultation.
 Your goal is to gather sufficient information about the patient's condition through targeted questions, then provide a diagnosis and prescription.
@@ -146,32 +162,38 @@ Respond in the same language as the patient."""
 
 # ── Tool schemas (Anthropic format) ──────────────────────────────────────────
 
-_CHAT_TOOL = {
-    "name": "determine_action",
-    "description": "Respond to the user and, once enough information is gathered, provide a preliminary assessment",
+_CHAT_RESPONSE_TOOL = {
+    "name": "chat_response",
+    "description": "Generate a conversational response to the user's health message",
     "input_schema": {
         "type": "object",
         "properties": {
             "responseText": {
                 "type": "string",
-                "description": "The conversational response to show the user",
+                "description": "The response to show the user (2-3 sentences)",
             },
-            "isComplete": {
-                "type": "boolean",
-                "description": "True only when you have gathered enough symptom information to make a preliminary assessment (requires ≥4 prior messages in history)",
-            },
+        },
+        "required": ["responseText"],
+    },
+}
+
+_CLASSIFY_TOOL = {
+    "name": "classify_recommendation",
+    "description": "Classify the patient's symptoms into a medical pathway and provide an assessment",
+    "input_schema": {
+        "type": "object",
+        "properties": {
             "conclusion": {
                 "type": "string",
-                "description": "Preliminary assessment summary for the patient (2-3 sentences). Required when isComplete=true.",
+                "description": "2-3 sentence preliminary assessment written for the patient",
             },
             "recommendation": {
                 "type": "string",
-                "enum": ["ONLINE_CONSULTATION", "OFFLINE_APPOINTMENT", "MEDICATION"],
-                "description": "The recommended next step. Required when isComplete=true.",
+                "enum": ["MEDICATION", "ONLINE_CONSULTATION", "OFFLINE_APPOINTMENT"],
             },
             "prescription": {
                 "type": "array",
-                "description": "List of medicines. Required when recommendation=MEDICATION.",
+                "description": "Required when recommendation=MEDICATION",
                 "items": {
                     "type": "object",
                     "properties": {
@@ -186,10 +208,10 @@ _CHAT_TOOL = {
             "recommendedDoctorIds": {
                 "type": "array",
                 "items": {"type": "integer"},
-                "description": "Relevant doctor IDs (1-5) when recommendation is ONLINE_CONSULTATION or OFFLINE_APPOINTMENT",
+                "description": "Doctor IDs (1-5) relevant to the condition",
             },
         },
-        "required": ["responseText", "isComplete"],
+        "required": ["conclusion", "recommendation"],
     },
 }
 
@@ -253,31 +275,45 @@ _PRESCRIPTION_TOOL = {
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+CONCLUDE_AFTER_EXCHANGES = 3  # trigger classification after this many user messages
+
+
 async def chat(message: str, history: List[ChatHistoryItem], language: str) -> Optional[ChatResponse]:
     messages = [{"role": h.role, "content": h.content} for h in history[-12:]]
     messages.append({"role": "user", "content": message})
 
-    inp = _call_tool(messages, CHAT_SYSTEM_PROMPT, [_CHAT_TOOL], max_tokens=1500)
-    if inp is None:
+    # Code controls timing — count how many user turns have happened including this one
+    user_turns = sum(1 for h in history if h.role == "user") + 1
+    force_complete = user_turns >= CONCLUDE_AFTER_EXCHANGES
+
+    if not force_complete:
+        # Normal chat: just generate a response
+        inp = _call_tool(messages, CHAT_SYSTEM_PROMPT, [_CHAT_RESPONSE_TOOL], max_tokens=512)
+        if inp is None:
+            return None
+        return ChatResponse(content=inp.get("responseText", ""))
+
+    # Step 1: generate a "I have an assessment" response
+    resp_inp = _call_tool(messages, CHAT_CONCLUDE_SYSTEM, [_CHAT_RESPONSE_TOOL], max_tokens=256)
+    response_text = resp_inp.get("responseText", "") if resp_inp else ""
+
+    # Step 2: separate focused classification call
+    classify_inp = _call_tool(messages, CLASSIFY_SYSTEM, [_CLASSIFY_TOOL], max_tokens=1024)
+    if classify_inp is None:
         return None
 
-    is_complete = inp.get("isComplete", False)
-    recommendation = inp.get("recommendation") if is_complete else None
-
+    recommendation = classify_inp.get("recommendation")
     prescription = None
-    if recommendation == "MEDICATION" and inp.get("prescription"):
-        prescription = [Medicine(**m) for m in inp["prescription"]]
+    if recommendation == "MEDICATION" and classify_inp.get("prescription"):
+        prescription = [Medicine(**m) for m in classify_inp["prescription"]]
 
     return ChatResponse(
-        content=inp.get("responseText", ""),
-        suggestConsultation=False,
-        consultationType=None,
-        suggestAppointment=False,
-        recommendedDoctorIds=inp.get("recommendedDoctorIds", []),
-        isComplete=is_complete,
-        conclusion=inp.get("conclusion") if is_complete else None,
+        content=response_text,
+        isComplete=True,
+        conclusion=classify_inp.get("conclusion"),
         recommendation=recommendation,
         prescription=prescription,
+        recommendedDoctorIds=classify_inp.get("recommendedDoctorIds", []),
     )
 
 

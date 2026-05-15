@@ -38,9 +38,9 @@ MOCK_PRESCRIPTION_ZH = [
 
 
 def get_mock_chat_response(message_count: int, language: str) -> ChatResponse:
+    # message_count is the number of user messages sent so far (including current)
     responses = MOCK_CHAT_RESPONSES_ZH if language == "ZH" else MOCK_CHAT_RESPONSES_EN
-    idx = min(message_count, len(responses) - 1)
-    is_complete = message_count >= 2
+    is_complete = message_count >= 2  # counter is 0-indexed; fires on 3rd user message
 
     if is_complete:
         if language == "ZH":
@@ -53,13 +53,14 @@ def get_mock_chat_response(message_count: int, language: str) -> ChatResponse:
             )
         else:
             return ChatResponse(
-                content="Based on what you've described, I have an initial assessment for you.",
+                content="Based on what you've described, I have an initial assessment ready for you.",
                 isComplete=True,
                 conclusion="Based on your symptoms, you likely have a mild upper respiratory infection (common cold). The combination of nasal congestion, sore throat, and low-grade fever is consistent with a viral infection. Rest, hydration, and symptomatic treatment should help you recover within 7–10 days.",
                 recommendation="MEDICATION",
                 prescription=MOCK_PRESCRIPTION,
             )
 
+    idx = min(message_count, len(responses) - 1)
     return ChatResponse(content=responses[idx])
 
 
