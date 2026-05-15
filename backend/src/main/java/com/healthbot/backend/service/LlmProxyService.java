@@ -46,6 +46,14 @@ public class LlmProxyService {
         }
     }
 
+    public void resetChatCounter(Long userId) {
+        try {
+            restTemplate.delete(getApiUrl() + "/chat-counter/" + userId);
+        } catch (Exception e) {
+            log.warn("Failed to reset chat counter for user {}: {}", userId, e.getMessage());
+        }
+    }
+
     public java.util.Map<String, Object> pushConfig(java.util.Map<String, Object> config) {
         try {
             var entity = new org.springframework.http.HttpEntity<>(config);

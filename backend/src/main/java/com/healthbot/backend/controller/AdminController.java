@@ -8,6 +8,7 @@ import com.healthbot.backend.repository.*;
 import com.healthbot.backend.service.LlmProxyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -25,6 +26,7 @@ public class AdminController {
     private final PurchaseRepository purchaseRepository;
     private final DoctorRepository doctorRepository;
     private final LlmConfigRepository llmConfigRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final LlmProxyService llmProxyService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -92,6 +94,31 @@ public class AdminController {
             result.add(entry);
         }
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<Map<String, Object>>> getAllUsers() {
+        List<Map<String, Object>> result = userRepository.findAll().stream()
+                .map(this::toUserDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/chat-history/{userId}")
+    public ResponseEntity<List<ChatMessageDto>> getChatHistory(@PathVariable Long userId) {
+        List<ChatMessage> msgs = chatMessageRepository.findByUserIdOrderByTimestampAsc(userId);
+        List<ChatMessageDto> dtos = msgs.stream()
+                .map(m -> new ChatMessageDto(m.getId(), m.getUserId(), m.getRole(), m.getContent(), m.getTimestamp()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    @DeleteMapping("/chat-history/{userId}")
+    @Transactional
+    public ResponseEntity<Void> deleteChatHistory(@PathVariable Long userId) {
+        chatMessageRepository.deleteByUserId(userId);
+        llmProxyService.resetChatCounter(userId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/llm-config")

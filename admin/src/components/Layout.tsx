@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Layout, Menu, Button, Typography, Space, theme } from 'antd';
 import {
   DashboardOutlined, MedicineBoxOutlined, ShoppingCartOutlined,
-  SettingOutlined, TranslationOutlined, HeartOutlined
+  SettingOutlined, TranslationOutlined, HeartOutlined, MessageOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
@@ -21,6 +21,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { key: '/', icon: <DashboardOutlined />, label: t('dashboard') },
     { key: '/consultations', icon: <MedicineBoxOutlined />, label: t('consultations') },
     { key: '/purchases', icon: <ShoppingCartOutlined />, label: t('purchases') },
+    { key: '/chat-history', icon: <MessageOutlined />, label: t('chatHistory') },
     { key: '/llm-config', icon: <SettingOutlined />, label: t('llmConfig') },
   ];
 

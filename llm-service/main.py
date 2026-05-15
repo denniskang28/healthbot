@@ -42,6 +42,12 @@ async def update_config(req: LlmConfigRequest):
     return config_manager.safe_get()
 
 
+@app.delete("/chat-counter/{user_id}")
+async def reset_chat_counter(user_id: int):
+    _chat_counters.pop(user_id, None)
+    return {"reset": True}
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     cfg = config_manager.get()

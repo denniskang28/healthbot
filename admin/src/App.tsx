@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Consultations from './pages/Consultations';
 import Purchases from './pages/Purchases';
 import LlmConfig from './pages/LlmConfig';
+import ChatHistory from './pages/ChatHistory';
 
 const App: React.FC = () => (
   <ConfigProvider theme={{ token: { colorPrimary: '#1677ff' } }}>
@@ -18,6 +19,7 @@ const App: React.FC = () => (
             <Route path="/consultations" element={<Consultations />} />
             <Route path="/purchases" element={<Purchases />} />
             <Route path="/llm-config" element={<LlmConfig />} />
+            <Route path="/chat-history" element={<ChatHistory />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppLayout>

@@ -76,6 +76,14 @@ export interface PurchaseEntry {
   prescription?: PrescriptionDto;
 }
 
+export interface ChatMessageDto {
+  id: number;
+  userId: number;
+  role: string; // USER | ASSISTANT
+  content: string;
+  timestamp: string;
+}
+
 export interface LlmConfigDto {
   provider: string;
   model: string;
