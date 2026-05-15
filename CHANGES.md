@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-05-16 · Admin 对话历史查看与清除
+
+**需求：** Admin 可查看任意用户的对话历史，并一键清除（同时重置 Mock 计数器），方便重新演示。
+
+**数据流：**
+
+```
+Admin UI 选择用户
+  GET /admin/chat-history/{userId}  →  Backend  →  DB 查 chat_messages 表
+
+Admin UI 点击「清除历史」
+  DELETE /admin/chat-history/{userId}  →  Backend
+                                           ├── DB 删除该用户所有消息
+                                           └── DELETE /chat-counter/{userId}  →  llm-service 重置 Mock 计数器
+```
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/repository/ChatMessageRepository.java` | 新增 `deleteByUserId(Long userId)` |
+| `backend/service/LlmProxyService.java` | 新增 `resetChatCounter(userId)`，调用 llm-service `DELETE /chat-counter/{userId}` |
+| `backend/controller/AdminController.java` | 新增 `GET /admin/users`、`GET /admin/chat-history/{userId}`、`DELETE /admin/chat-history/{userId}` |
+| `llm-service/main.py` | 新增 `DELETE /chat-counter/{userId}`，清除内存中的 Mock 消息计数 |
+| `admin/src/pages/ChatHistory.tsx` | **新页面** — 左侧用户列表，右侧聊天气泡（USER 蓝色右对齐 / AI 灰色左对齐），顶部「清除历史」按钮含确认弹窗 |
+| `admin/src/api/types.ts` | 新增 `ChatMessageDto` 接口 |
+| `admin/src/api/client.ts` | 新增 `getUsers`、`getChatHistory`、`deleteChatHistory` |
+| `admin/src/context/LanguageContext.tsx` | 新增 EN/ZH 翻译键：`chatHistory`、`clearHistory`、`confirmClearHistory`、`historyCleared` 等 |
+| `admin/src/App.tsx` | 注册 `/chat-history` 路由 |
+| `admin/src/components/Layout.tsx` | 侧边栏新增「对话历史」菜单项（MessageOutlined 图标） |
+
+---
+
 ## 2026-05-16 · Bug 修复：Chat 历史记录顺序与重复问题
 
 **问题根因：** `ChatController` 在保存当前用户消息**之后**才查询历史记录，且查询使用降序排列，导致两个并发 bug。
