@@ -105,6 +105,54 @@ Home → Tap Banner → Chatbot → Chat with AI
 - **Android**: Toggle EN/ZH via toolbar button (persisted in SharedPreferences)
 - **Admin**: Toggle EN/中文 via header button (persisted in localStorage)
 
+## Demo Chat Scripts
+
+Use these scripts to reliably trigger each AI recommendation path during a demo.
+The LLM produces a conclusion after **3 exchanges** (6 messages in history).
+
+### Case 1 → Online Pharmacy (MEDICATION)
+*Mild, clear-cut symptoms — LLM recommends medication directly.*
+
+| Turn | You say |
+|------|---------|
+| 1 | My throat is a bit sore and my nose is slightly congested. |
+| 2 | It started yesterday. I have a mild fever, about 37.5°C, no other symptoms. |
+| 3 | I haven't taken any medication and I have no known drug allergies. |
+
+**Expected:** LLM diagnoses common cold → prescription shown (amoxicillin, ibuprofen, etc.) + **Go to Online Pharmacy** button.
+
+---
+
+### Case 2 → Online Expert Consultation (ONLINE_CONSULTATION)
+*Significant recurring symptoms — LLM recommends speaking with a specialist.*
+
+| Turn | You say |
+|------|---------|
+| 1 | I've been getting recurring headaches for the past two weeks, mainly around my temples. |
+| 2 | Each episode lasts two to three hours. I sometimes feel nauseous and light makes it worse. |
+| 3 | Ibuprofen helps a little but the headaches keep coming back. No fever. |
+
+**Expected:** LLM suspects migraine — notable but non-emergency → **Online Expert Consultation** button.
+
+---
+
+### Case 3 → Offline Appointment (OFFLINE_APPOINTMENT)
+*Complex symptoms requiring physical examination or lab work.*
+
+| Turn | You say |
+|------|---------|
+| 1 | I've lost about 5 kg over the past month without trying to lose weight. |
+| 2 | I also feel unusually tired and I sweat a lot at night. |
+| 3 | No loss of appetite, but I occasionally have a racing heart. There's a family history of diabetes. |
+
+**Expected:** LLM flags possible metabolic or endocrine issue requiring blood work → **Book In-Person Appointment** button.
+
+---
+
+> **Tip:** If the LLM doesn't trigger a conclusion after turn 3, add *"What do you think I should do?"* to nudge it.
+
+---
+
 ## Demo Users (pre-loaded)
 
 | ID | Name | Language |
