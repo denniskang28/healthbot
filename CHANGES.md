@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-16 · Bug 修复：H2 数据库持久化 + 种子数据重复
+
+**问题：** 后端重启后数据全部丢失；即使改为文件存储，种子数据也会在每次重启时重复插入。
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| 重启后数据丢失 | H2 使用内存模式（`mem:`），进程退出即清空；`ddl-auto: create-drop` 关闭时主动删表 | URL 改为 `jdbc:h2:file:./data/healthbotdb`，`ddl-auto` 改为 `update` |
+| 种子数据重复插入 | `DataInitializer` 每次启动无条件执行所有 `save()` | 各实体块加 `if (repo.count() == 0)` 判断，首次启动才插入 |
+
+**改动文件：**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/resources/application.yml` | datasource url 从 `mem:` 改为 `file:./data/healthbotdb`；`ddl-auto` 从 `create-drop` 改为 `update` |
+| `backend/.gitignore` | 新增，忽略 `data/` 目录（数据库文件不入库） |
+| `backend/config/DataInitializer.java` | Users、Doctors、LlmConfig 三个种子块各加 `count() == 0` 守卫 |
+
+---
+
 ## 2026-05-16 · Admin 对话历史查看与清除
 
 **需求：** Admin 可查看任意用户的对话历史，并一键清除（同时重置 Mock 计数器），方便重新演示。
