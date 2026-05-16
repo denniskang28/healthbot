@@ -2,6 +2,43 @@
 
 ---
 
+## 2026-05-16 · MEDICAL_LLM 服务商优化：Mock 独立、DeepSeek 默认、服务次数统计
+
+**四项改动：**
+
+**1. Mock Simulation 独立为专属服务商**
+
+Mock 不再是每个 LLM provider 的一个开关，而是一个独立的 `MEDICAL_LLM` 服务商（`mockMode: true`）。通过 Admin 启用它、加一条路由规则指向它即可激活；真实 LLM provider（Claude/GPT-4/DeepSeek）的配置页面只保留 provider、model、API key、system prompt，不再显示 mock 开关。
+
+| 文件 | 改动 |
+|------|------|
+| `admin/src/pages/ProviderDetail.tsx` | `LlmConfigCard` 按 `existingConfig.mockMode` 分两套 UI：mock provider 只显示脚本选择；真实 provider 只显示 LLM 参数 |
+
+**2. 默认 MEDICAL_LLM 切换为 DeepSeek**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/config/DataInitializer.java` | DeepSeek Medical 优先级提至 100、enabled=true；Claude AI 降为 80、enabled=false；新增种子路由规则 `Default LLM — DeepSeek`（serviceType=MEDICAL_LLM，condition=`{}`，priority=0）—— 清库重启后自动生效 |
+
+**3. MEDICAL_LLM 服务次数统计**
+
+每次 LLM 给出有效推荐（recommendation 非 null），为当前活跃的 MEDICAL_LLM provider 写一条 `status=COMPLETED` 的 `ServiceRecord`，Admin Providers 列表的服务次数实时更新。
+
+| 文件 | 改动 |
+|------|------|
+| `backend/service/ProviderRoutingService.java` | 新增 `recordMedicalLlmCompletion(provider, userId)` |
+| `backend/controller/ChatController.java` | recommendation 非 null 时调用上述方法 |
+
+**4. 服务商详情页显示服务记录**
+
+原来 MEDICAL_LLM 服务商详情页只渲染 LLM 配置卡片，服务记录表格被 `else` 分支隐藏。现改为两块并列：LLM 配置卡片（仅 MEDICAL_LLM）+ 服务记录表格（所有类型）。
+
+| 文件 | 改动 |
+|------|------|
+| `admin/src/pages/ProviderDetail.tsx` | 三元改为条件渲染 + 始终显示服务记录表格 |
+
+---
+
 ## 2026-05-16 · LLM 配置移入 MEDICAL_LLM 服务商 + 专科路由
 
 **需求：** 把原来几个 LLM provider（Claude、GPT-4、DeepSeek、Mock）做成 MEDICAL_LLM 服务商，LLM 的 provider/model/API key/system prompt 全部在服务商详情页配置；通过路由规则决定用哪个 MEDICAL_LLM 服务商。同时支持按专科路由（如将心内科问诊路由给专科服务商）。
