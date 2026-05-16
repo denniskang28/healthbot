@@ -81,6 +81,9 @@ public class ChatController {
         ActionsDto actions = llmResult.actions();
         String recommendation = actions.getRecommendation();
         if (recommendation != null) {
+            if (llmProvider != null) {
+                providerRoutingService.recordMedicalLlmCompletion(llmProvider, userId);
+            }
             ServiceProvider provider = providerRoutingService.dispatch(recommendation, language, actions.getSpecialty(), userId);
             if (provider != null) {
                 actions.setSelectedProviderId(provider.getId());

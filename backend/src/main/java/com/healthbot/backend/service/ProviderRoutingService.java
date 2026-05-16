@@ -39,6 +39,15 @@ public class ProviderRoutingService {
         return selectProvider("MEDICAL_LLM", language, specialty);
     }
 
+    public void recordMedicalLlmCompletion(ServiceProvider provider, Long userId) {
+        ServiceRecord record = new ServiceRecord();
+        record.setProviderId(provider.getId());
+        record.setUserId(userId);
+        record.setServiceType("MEDICAL_LLM");
+        record.setStatus("COMPLETED");
+        recordRepo.save(record);
+    }
+
     public ServiceProvider dispatch(String recommendation, String language, String specialty, Long userId) {
         String providerType = TYPE_MAP.get(recommendation);
         if (providerType == null) return null;
