@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-05-16 · Admin 登录鉴权 + 密码重置
+
+**需求：** Admin 控制台增加登录保护，初始密码 `12345`，可在系统管理页面重置。
+
+**鉴权流程：**
+
+```
+Admin UI 输入密码
+  POST /admin/auth/login  →  Backend 验证 SHA-256 hash
+                              └── 生成 UUID token 返回
+Admin UI 存入 localStorage，后续所有请求自动携带
+  Authorization: Bearer <token>  →  AdminAuthFilter 验证
+                                     ├── 通过 → 正常处理
+                                     └── 失败 → 401，前端清 token 跳回登录页
+
+修改密码
+  PUT /admin/auth/password  →  验旧密码 → 更新 hash → 使现有 token 失效 → 前端自动退出
+```
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/model/AdminCredential.java` | **新增** — 存密码 SHA-256 hash 的实体 |
+| `backend/repository/AdminCredentialRepository.java` | **新增** |
+| `backend/service/AdminAuthService.java` | **新增** — 登录生成 UUID token、验 token、改密码（改完 token 失效） |
+| `backend/controller/AdminAuthController.java` | **新增** — `POST /admin/auth/login`、`PUT /admin/auth/password` |
+| `backend/config/AdminAuthFilter.java` | **新增** — `OncePerRequestFilter`，拦截所有 `/admin/**`，`/admin/auth/` 放行 |
+| `backend/config/DataInitializer.java` | 首次启动写入 `12345` 的 hash |
+| `admin/src/pages/Login.tsx` | **新增** — 居中登录卡片，密码输入框 |
+| `admin/src/pages/Settings.tsx` | **新增** — 系统管理页，修改密码表单，成功后 1.5s 自动退出重新登录 |
+| `admin/src/api/client.ts` | 新增 axios 拦截器（注入 Bearer token；401 时清 token 刷新）；新增 `login`、`changePassword` |
+| `admin/src/App.tsx` | 未登录渲染 `Login.tsx`；已登录渲染正常布局；新增 `/settings` 路由 |
+| `admin/src/components/Layout.tsx` | 新增「系统管理」菜单项；右上角新增带确认弹窗的退出按钮 |
+| `admin/src/context/LanguageContext.tsx` | 新增 EN/ZH 翻译键：`logout`、`settings`、`changePassword`、`passwordChanged` 等 |
+
+---
+
 ## 2026-05-16 · Android Chatbot 进入时加载历史记录
 
 **需求：** 每次打开 Chatbot 界面时，先展示最近 20 条历史消息，再显示问候语，让用户有完整的对话上下文。
