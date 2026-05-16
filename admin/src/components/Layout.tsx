@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Button, Typography, Space, theme } from 'antd';
+import { Layout, Menu, Button, Typography, Space, theme, Popconfirm } from 'antd';
 import {
   DashboardOutlined, MedicineBoxOutlined, ShoppingCartOutlined,
   SettingOutlined, TranslationOutlined, HeartOutlined, MessageOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
@@ -10,7 +11,7 @@ import { useLang } from '../context/LanguageContext';
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
 
-const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AppLayout: React.FC<{ children: React.ReactNode; onLogout: () => void }> = ({ children, onLogout }) => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,6 +24,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { key: '/purchases', icon: <ShoppingCartOutlined />, label: t('purchases') },
     { key: '/chat-history', icon: <MessageOutlined />, label: t('chatHistory') },
     { key: '/llm-config', icon: <SettingOutlined />, label: t('llmConfig') },
+    { key: '/settings', icon: <SettingOutlined />, label: t('settings') },
   ];
 
   return (
@@ -52,6 +54,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <Button icon={<TranslationOutlined />} onClick={toggleLang} type="text">
               {t('switchLang')}
             </Button>
+            <Popconfirm title={t('confirmLogout')} onConfirm={() => {
+              localStorage.removeItem('admin_token');
+              onLogout();
+            }} okText={t('confirm')} cancelText={t('cancel')}>
+              <Button icon={<LogoutOutlined />} type="text" danger>{t('logout')}</Button>
+            </Popconfirm>
           </Space>
         </Header>
         <Content style={{ margin: '24px', background: token.colorBgLayout }}>

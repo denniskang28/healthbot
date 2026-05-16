@@ -2,6 +2,7 @@ package com.healthbot.backend.config;
 
 import com.healthbot.backend.model.*;
 import com.healthbot.backend.repository.*;
+import com.healthbot.backend.service.AdminAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,8 @@ public class DataInitializer implements CommandLineRunner {
     private final DoctorRepository doctorRepository;
     private final UserSessionRepository userSessionRepository;
     private final LlmConfigRepository llmConfigRepository;
+    private final AdminCredentialRepository adminCredentialRepository;
+    private final AdminAuthService adminAuthService;
 
     @Override
     public void run(String... args) {
@@ -58,6 +61,12 @@ public class DataInitializer implements CommandLineRunner {
             d5.setBio("Pediatrician with 12 years of experience providing comprehensive healthcare for children from newborns to adolescents.");
             d5.setRating(4.8); d5.setAvailable(true); d5.setAvatarInitials("DK");
             doctorRepository.save(d5);
+        }
+
+        if (adminCredentialRepository.count() == 0) {
+            AdminCredential cred = new AdminCredential();
+            cred.setPasswordHash(adminAuthService.hash("12345"));
+            adminCredentialRepository.save(cred);
         }
 
         if (llmConfigRepository.count() == 0) {
