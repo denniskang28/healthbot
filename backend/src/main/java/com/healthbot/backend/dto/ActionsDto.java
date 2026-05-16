@@ -20,6 +20,7 @@ public class ActionsDto {
     private boolean isComplete;
     private String conclusion;
     private String recommendation; // ONLINE_CONSULTATION | OFFLINE_APPOINTMENT | MEDICATION
+    private String specialty;      // CARDIOLOGY | NEUROLOGY | DERMATOLOGY | ORTHOPEDICS | GASTROENTEROLOGY | RESPIRATORY | ENDOCRINOLOGY | PSYCHIATRY | PEDIATRICS | GENERAL
     private List<MedicineDto> prescription;
     private Long selectedProviderId;
     private String selectedProviderName;

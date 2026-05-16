@@ -30,6 +30,7 @@ class ChatResponse(BaseModel):
     isComplete: bool = False
     conclusion: Optional[str] = None
     recommendation: Optional[str] = None   # ONLINE_CONSULTATION | OFFLINE_APPOINTMENT | MEDICATION
+    specialty: Optional[str] = None        # CARDIOLOGY | NEUROLOGY | DERMATOLOGY | ...
     prescription: Optional[List[Medicine]] = None
 
 

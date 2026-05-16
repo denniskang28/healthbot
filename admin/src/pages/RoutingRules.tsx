@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Button, Switch, Space, Tag, Popconfirm, Modal, Form, Input, InputNumber, Select, message, Typography } from 'antd';
+import { Card, Table, Button, Switch, Space, Tag, Popconfirm, Modal, Form, Input, InputNumber, Select, message, Typography, Divider } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getRoutingRules, createRoutingRule, updateRoutingRule, deleteRoutingRule, toggleRoutingRule, getProviders } from '../api/client';
 import type { RoutingRuleDto, ServiceProviderDto } from '../api/types';
 import { useLang } from '../context/LanguageContext';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const SERVICE_TYPES = ['ONLINE_CONSULTATION', 'OFFLINE_APPOINTMENT', 'ONLINE_PHARMACY'];
+
+const SPECIALTIES = [
+  'GENERAL', 'CARDIOLOGY', 'NEUROLOGY', 'DERMATOLOGY', 'ORTHOPEDICS',
+  'GASTROENTEROLOGY', 'RESPIRATORY', 'ENDOCRINOLOGY', 'PSYCHIATRY', 'PEDIATRICS',
+];
 
 const RoutingRules: React.FC = () => {
   const [rules, setRules] = useState<RoutingRuleDto[]>([]);
@@ -85,12 +90,46 @@ const RoutingRules: React.FC = () => {
     return map[type] || type;
   };
 
+  const specialtyLabel = (sp: string) => {
+    const map: Record<string, string> = {
+      GENERAL: t('GENERAL'), CARDIOLOGY: t('CARDIOLOGY'), NEUROLOGY: t('NEUROLOGY'),
+      DERMATOLOGY: t('DERMATOLOGY'), ORTHOPEDICS: t('ORTHOPEDICS'),
+      GASTROENTEROLOGY: t('GASTROENTEROLOGY'), RESPIRATORY: t('RESPIRATORY'),
+      ENDOCRINOLOGY: t('ENDOCRINOLOGY'), PSYCHIATRY: t('PSYCHIATRY'), PEDIATRICS: t('PEDIATRICS'),
+    };
+    return map[sp] || sp;
+  };
+
+  // Build preset list from specialties + language combinations
+  const buildPresets = () => {
+    const base = [{ label: `(any) {}`, value: '{}' }];
+    const langs = [
+      { label: 'Language: ZH', value: '{"language":"ZH"}' },
+      { label: 'Language: EN', value: '{"language":"EN"}' },
+    ];
+    const specs = SPECIALTIES.map(sp => ({
+      label: `${t('specialty')}: ${specialtyLabel(sp)}`,
+      value: JSON.stringify({ specialty: sp }),
+    }));
+    const combined = SPECIALTIES.flatMap(sp => [
+      { label: `ZH + ${specialtyLabel(sp)}`, value: JSON.stringify({ language: 'ZH', specialty: sp }) },
+      { label: `EN + ${specialtyLabel(sp)}`, value: JSON.stringify({ language: 'EN', specialty: sp }) },
+    ]);
+    return [...base, ...langs, ...specs, ...combined];
+  };
+
+  const applyPreset = (value: string) => {
+    form.setFieldValue('conditionJson', value);
+  };
+
   const conditionLabel = (json: string) => {
     try {
       const obj = JSON.parse(json);
-      if (!obj || Object.keys(obj).length === 0) return t('noTarget');
-      if (obj.language) return `Lang: ${obj.language}`;
-      return json;
+      if (!obj || Object.keys(obj).length === 0) return '(any)';
+      const parts: string[] = [];
+      if (obj.language) parts.push(`Lang: ${obj.language}`);
+      if (obj.specialty) parts.push(`${t('specialty')}: ${specialtyLabel(obj.specialty)}`);
+      return parts.length > 0 ? parts.join(' + ') : json;
     } catch {
       return json;
     }
@@ -162,8 +201,19 @@ const RoutingRules: React.FC = () => {
           <Form.Item name="serviceType" label={t('serviceType')} rules={[{ required: true }]}>
             <Select options={serviceTypeOptions} />
           </Form.Item>
-          <Form.Item name="conditionJson" label={t('conditionJson')} rules={[{ required: true }]}
-            help='Examples: {} for any, {"language":"ZH"} for Chinese users'>
+          <Form.Item label={t('conditionJson')} style={{ marginBottom: 0 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t('conditionPreset')}：</Text>
+            <Select
+              options={buildPresets()}
+              onChange={applyPreset}
+              placeholder={t('conditionPreset')}
+              style={{ width: '100%', marginBottom: 8, marginTop: 4 }}
+              showSearch
+              filterOption={(input, opt) => (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())}
+            />
+          </Form.Item>
+          <Form.Item name="conditionJson" rules={[{ required: true }]}
+            help='JSON: {} = any, {"language":"ZH"}, {"specialty":"NEUROLOGY"}, {"language":"ZH","specialty":"CARDIOLOGY"}'>
             <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item name="targetProviderId" label={t('targetProvider')}>

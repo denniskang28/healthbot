@@ -35,11 +35,11 @@ public class ProviderRoutingService {
     /**
      * Select provider, record the dispatch, and return the provider (or null if none configured).
      */
-    public ServiceProvider dispatch(String recommendation, String language, Long userId) {
+    public ServiceProvider dispatch(String recommendation, String language, String specialty, Long userId) {
         String providerType = TYPE_MAP.get(recommendation);
         if (providerType == null) return null;
 
-        ServiceProvider selected = selectProvider(providerType, language);
+        ServiceProvider selected = selectProvider(providerType, language, specialty);
         if (selected == null) return null;
 
         ServiceRecord record = new ServiceRecord();
@@ -52,11 +52,11 @@ public class ProviderRoutingService {
         return selected;
     }
 
-    private ServiceProvider selectProvider(String type, String language) {
+    private ServiceProvider selectProvider(String type, String language, String specialty) {
         List<RoutingRule> rules = ruleRepo.findByServiceTypeAndEnabledTrueOrderByPriorityDesc(type);
 
         for (RoutingRule rule : rules) {
-            if (!conditionMatches(rule.getConditionJson(), language)) continue;
+            if (!conditionMatches(rule.getConditionJson(), language, specialty)) continue;
 
             if (rule.getTargetProviderId() != null) {
                 ServiceProvider target = providerRepo.findById(rule.getTargetProviderId()).orElse(null);
@@ -72,15 +72,20 @@ public class ProviderRoutingService {
         return providers.isEmpty() ? null : providers.get(0);
     }
 
-    private boolean conditionMatches(String conditionJson, String language) {
+    // All conditions in the JSON must match (AND logic).
+    // Supported keys: "language" (EN/ZH), "specialty" (CARDIOLOGY, NEUROLOGY, etc.)
+    private boolean conditionMatches(String conditionJson, String language, String specialty) {
         try {
             JsonNode node = objectMapper.readTree(conditionJson);
             if (node.has("language")) {
-                String required = node.get("language").asText();
                 String lang = language != null ? language : "EN";
-                return required.equalsIgnoreCase(lang);
+                if (!node.get("language").asText().equalsIgnoreCase(lang)) return false;
             }
-            return true; // empty condition always matches
+            if (node.has("specialty")) {
+                if (specialty == null) return false;
+                if (!node.get("specialty").asText().equalsIgnoreCase(specialty)) return false;
+            }
+            return true;
         } catch (Exception e) {
             return true;
         }

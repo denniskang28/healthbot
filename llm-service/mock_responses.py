@@ -25,6 +25,7 @@ MOCK_SCRIPTS = {
             "多休息、多饮水，按照下方处方用药，通常7-10天内可康复。"
         ),
         "recommendation": "MEDICATION",
+        "specialty": "RESPIRATORY",
         "prescription_en": [
             Medicine(name="Ibuprofen",       dosage="400mg", frequency="every 8 hours as needed", days=5),
             Medicine(name="Pseudoephedrine", dosage="60mg",  frequency="every 6 hours",            days=5),
@@ -58,6 +59,7 @@ MOCK_SCRIPTS = {
             "建议在线咨询神经科医生。"
         ),
         "recommendation": "ONLINE_CONSULTATION",
+        "specialty": "NEUROLOGY",
         "prescription_en": None,
         "prescription_zh": None,
         "recommendedDoctorIds": [4],  # Neurology
@@ -83,6 +85,7 @@ MOCK_SCRIPTS = {
             "请尽快预约线下就医。"
         ),
         "recommendation": "OFFLINE_APPOINTMENT",
+        "specialty": "ENDOCRINOLOGY",
         "prescription_en": None,
         "prescription_zh": None,
         "recommendedDoctorIds": [2],  # General Practice
@@ -139,6 +142,7 @@ def get_mock_chat_response(message_count: int, language: str, script: str = "MED
             isComplete=True,
             conclusion=conclusion,
             recommendation=s["recommendation"],
+            specialty=s.get("specialty"),
             prescription=prescription_list,
             recommendedDoctorIds=s.get("recommendedDoctorIds", []),
         )

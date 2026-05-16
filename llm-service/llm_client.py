@@ -154,6 +154,18 @@ Decision rules when unsure:
   ONLINE_CONSULTATION vs OFFLINE_APPOINTMENT → choose OFFLINE_APPOINTMENT
   MEDICATION vs ONLINE_CONSULTATION → choose ONLINE_CONSULTATION
 
+Medical specialty — always choose the most relevant one:
+  CARDIOLOGY       — chest pain, palpitations, shortness of breath, arrhythmia
+  NEUROLOGY        — recurring headaches, migraines, numbness, dizziness, seizures
+  DERMATOLOGY      — skin rashes, itching, eczema, acne, suspicious moles
+  ORTHOPEDICS      — joint pain, back pain, bone/muscle injuries, mobility problems
+  GASTROENTEROLOGY — stomach pain, nausea, vomiting, diarrhea, bloating
+  RESPIRATORY      — persistent cough, asthma, wheezing, breathing difficulty
+  ENDOCRINOLOGY    — unexplained weight changes, diabetes symptoms, thyroid issues
+  PSYCHIATRY       — anxiety, depression, insomnia, mood disorders
+  PEDIATRICS       — condition in a child or infant
+  GENERAL          — mild infections, common cold, routine concerns, non-specific symptoms
+
 Write the conclusion in the same language the user used in the conversation."""
 
 AI_CONSULTATION_SYSTEM = """You are an AI doctor conducting a structured medical consultation.
@@ -215,13 +227,19 @@ _CLASSIFY_TOOL = {
                     "required": ["name", "dosage", "frequency", "days"],
                 },
             },
+            "specialty": {
+                "type": "string",
+                "enum": ["GENERAL", "CARDIOLOGY", "NEUROLOGY", "DERMATOLOGY", "ORTHOPEDICS",
+                         "GASTROENTEROLOGY", "RESPIRATORY", "ENDOCRINOLOGY", "PSYCHIATRY", "PEDIATRICS"],
+                "description": "Primary medical specialty for this patient's condition",
+            },
             "recommendedDoctorIds": {
                 "type": "array",
                 "items": {"type": "integer"},
                 "description": "Doctor IDs (1-5) relevant to the condition",
             },
         },
-        "required": ["conclusion", "recommendation"],
+        "required": ["conclusion", "recommendation", "specialty"],
     },
 }
 
@@ -327,6 +345,7 @@ async def chat(message: str, history: List[ChatHistoryItem], language: str) -> O
         isComplete=True,
         conclusion=classify_inp.get("conclusion"),
         recommendation=recommendation,
+        specialty=classify_inp.get("specialty"),
         prescription=prescription,
         recommendedDoctorIds=classify_inp.get("recommendedDoctorIds", []),
     )

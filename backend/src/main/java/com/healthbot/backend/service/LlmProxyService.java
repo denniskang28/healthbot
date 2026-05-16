@@ -105,6 +105,7 @@ public class LlmProxyService {
             boolean isComplete = response.path("isComplete").asBoolean(false);
             String conclusion = response.path("conclusion").isNull() ? null : response.path("conclusion").asText(null);
             String recommendation = response.path("recommendation").isNull() ? null : response.path("recommendation").asText(null);
+            String specialty = response.path("specialty").isNull() ? null : response.path("specialty").asText(null);
 
             List<MedicineDto> prescription = null;
             JsonNode rxNode = response.path("prescription");
@@ -121,7 +122,7 @@ public class LlmProxyService {
             }
 
             ActionsDto actions = new ActionsDto(suggestConsultation, consultationType, suggestAppointment, doctorIds,
-                    isComplete, conclusion, recommendation, prescription, null, null, null);
+                    isComplete, conclusion, recommendation, specialty, prescription, null, null, null);
             return new ChatLlmResult(content, actions);
 
         } catch (Exception e) {
@@ -176,7 +177,7 @@ public class LlmProxyService {
     }
 
     private ChatLlmResult fallbackChatResult() {
-        ActionsDto actions = new ActionsDto(false, null, false, List.of(), false, null, null, null, null, null, null);
+        ActionsDto actions = new ActionsDto(false, null, false, List.of(), false, null, null, null, null, null, null, null);
         return new ChatLlmResult("I'm here to help with your health questions. Could you tell me more about your symptoms or concerns?", actions);
     }
 
