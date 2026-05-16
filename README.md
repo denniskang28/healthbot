@@ -1,4 +1,4 @@
-# HealthBot — AIA Health Insurance Chatbot Demo
+# HealthBot —  Health Insurance Chatbot Demo
 
 Full-stack health chatbot demo for an insurance company, featuring AI medical consultation, online doctor video consultation, hospital appointment booking, and pharmacy.
 
