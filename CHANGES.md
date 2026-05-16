@@ -2,6 +2,61 @@
 
 ---
 
+## 2026-05-16 · LLM 配置移入 MEDICAL_LLM 服务商 + 专科路由
+
+**需求：** 把原来几个 LLM provider（Claude、GPT-4、DeepSeek、Mock）做成 MEDICAL_LLM 服务商，LLM 的 provider/model/API key/system prompt 全部在服务商详情页配置；通过路由规则决定用哪个 MEDICAL_LLM 服务商。同时支持按专科路由（如将心内科问诊路由给专科服务商）。
+
+**架构变化：**
+
+```
+聊天请求进入 ChatController
+  ↓
+ProviderRoutingService.selectMedicalLlm(language, specialty)
+  → 按路由规则选优先级最高的已启用 MEDICAL_LLM 服务商
+  ↓
+LlmProxyService.applyProviderConfigJson(provider.config)
+  → 把该服务商的 JSON config push 给 llm-service（热重载，无需重启）
+  ↓
+正常 LLM 调用（使用该服务商的 model/key/mockMode 等配置）
+```
+
+**路由条件支持 AND 逻辑：**
+
+| conditionJson | 匹配规则 |
+|--------------|---------|
+| `{}` | 匹配所有请求 |
+| `{"language":"ZH"}` | 仅匹配中文用户 |
+| `{"specialty":"CARDIOLOGY"}` | 仅匹配心内科推荐 |
+| `{"language":"ZH","specialty":"NEUROLOGY"}` | 中文 + 神经科（两个条件同时满足） |
+
+**种子 MEDICAL_LLM 服务商：**
+
+| 服务商 | 优先级 | 启用 | 说明 |
+|--------|--------|------|------|
+| Claude AI | 100 | ✓ | Anthropic claude-sonnet-4-6，默认激活 |
+| GPT-4 Medical | 80 | - | OpenAI gpt-4o，备用 |
+| DeepSeek Medical | 60 | - | DeepSeek deepseek-chat，低成本备用 |
+| Mock Simulation | 0 | - | mockMode=true，演示专用，零成本 |
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/config/DataInitializer.java` | 新增 4 个 MEDICAL_LLM 服务商种子（含完整 config JSON）；非 LLM 服务商改用无品牌虚构公司名 |
+| `backend/service/ProviderRoutingService.java` | 新增 `selectMedicalLlm(language, specialty)`；`conditionMatches()` 支持 language + specialty AND 逻辑 |
+| `backend/service/LlmProxyService.java` | 新增 `applyProviderConfigJson(configJson)` 解析并 push 到 llm-service |
+| `backend/controller/ChatController.java` | 每次聊天前调用 `selectMedicalLlm` + `applyProviderConfigJson`；`dispatch()` 传入 specialty |
+| `backend/dto/ActionsDto.java` | 新增 `specialty` 字段（LLM 分类结果，用于路由） |
+| `llm-service/llm_client.py` | `_CLASSIFY_TOOL` 新增 `specialty` 枚举字段（10 个专科值）；`CLASSIFY_SYSTEM` 新增专科分配规则 |
+| `llm-service/models.py` | `ChatResponse` 新增 `specialty` 字段 |
+| `llm-service/mock_responses.py` | 各脚本新增 `specialty` 值（RESPIRATORY / NEUROLOGY / ENDOCRINOLOGY） |
+| `admin/src/pages/ProviderDetail.tsx` | MEDICAL_LLM 服务商展示 `LlmConfigCard`（Mock 开关、脚本选择、provider/model/key/system prompt 全配置）；保存时 API key 为空则保留现有 key |
+| `admin/src/pages/RoutingRules.tsx` | 路由规则服务类型新增 MEDICAL_LLM；条件预设生成所有 language × specialty 组合 |
+| `admin/src/components/Layout.tsx` | 移除独立「LLM Config」菜单项（配置已移入服务商详情页） |
+| `admin/src/context/LanguageContext.tsx` | 新增 `llmConfigCard` 翻译键 |
+
+---
+
 ## 2026-05-16 · 可配置服务商管理 + 路由规则引擎
 
 **需求：** 把医疗大语言模型、线上问诊、线下预约、线上药房做成可配置可替换的服务商，支持多服务商并存、规则引擎按条件路由、Admin 可视化管理。
@@ -25,33 +80,32 @@ ActionsDto 返回 selectedProviderId / selectedProviderName / selectedProviderCo
 
 **服务商类型：**
 
-| 类型 | 说明 | 最大数量 |
-|------|------|---------|
-| `MEDICAL_LLM` | 医疗大语言模型（当前固定为 Anthropic Claude） | 1 |
-| `ONLINE_CONSULTATION` | 线上问诊平台 | 多个 |
-| `OFFLINE_APPOINTMENT` | 线下预约网络 | 多个 |
-| `ONLINE_PHARMACY` | 线上药房 | 多个 |
-| `OTHER` | 其他类型 | 多个 |
+| 类型 | 说明 |
+|------|------|
+| `MEDICAL_LLM` | 医疗大语言模型，路由规则决定用哪个 |
+| `ONLINE_CONSULTATION` | 线上问诊平台 |
+| `OFFLINE_APPOINTMENT` | 线下预约网络 |
+| `ONLINE_PHARMACY` | 线上药房 |
+| `OTHER` | 其他类型 |
 
-**种子数据（首次启动自动写入）：**
+**种子非 LLM 服务商（首次启动自动写入）：**
 
 | 服务商 | 类型 | 公司 | 优先级 |
 |--------|------|------|--------|
-| Anthropic Claude | MEDICAL_LLM | Anthropic | 100 |
-| PingAn Good Doctor | ONLINE_CONSULTATION | PingAn Health | 100 |
-| Aliyun Health | ONLINE_CONSULTATION | Alibaba Cloud | 80 |
-| PingAn Hospital Network | OFFLINE_APPOINTMENT | PingAn Health | 100 |
-| United Family Healthcare | OFFLINE_APPOINTMENT | UFH Group | 80 |
-| PingAn Pharmacy | ONLINE_PHARMACY | PingAn Health | 100 |
-| JD Pharmacy | ONLINE_PHARMACY | JD.com | 80 |
+| MediConnect Online | ONLINE_CONSULTATION | MediConnect Health | 100 |
+| CareCloud Doctors | ONLINE_CONSULTATION | CareCloud Medical | 80 |
+| HealthNet Hospital Network | OFFLINE_APPOINTMENT | HealthNet Group | 100 |
+| Premier Care Centers | OFFLINE_APPOINTMENT | Premier Health | 80 |
+| QuickPharm Online | ONLINE_PHARMACY | QuickPharm | 100 |
+| MedMart Pharmacy | ONLINE_PHARMACY | MedMart Health | 80 |
 
-**默认路由规则（ZH 用户优先走平安渠道）：**
+**默认路由规则：**
 
 | 规则 | 条件 | 目标服务商 | 优先级 |
 |------|------|-----------|--------|
-| ZH - Online Consultation | `{"language":"ZH"}` | PingAn Good Doctor | 100 |
-| ZH - Offline Appointment | `{"language":"ZH"}` | PingAn Hospital Network | 100 |
-| ZH - Online Pharmacy | `{"language":"ZH"}` | PingAn Pharmacy | 100 |
+| ZH - Online Consultation | `{"language":"ZH"}` | MediConnect Online | 100 |
+| ZH - Offline Appointment | `{"language":"ZH"}` | HealthNet Hospital Network | 100 |
+| ZH - Online Pharmacy | `{"language":"ZH"}` | QuickPharm Online | 100 |
 
 **各组件改动：**
 
