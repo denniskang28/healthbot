@@ -1,0 +1,45 @@
+services:
+
+  llm:
+    build: ./llm-service
+    container_name: healthbot-llm
+    restart: unless-stopped
+    env_file: ./llm-service/.env          # PROVIDER, MODEL, *_API_KEY
+    volumes:
+      - ./llm-service/config.json:/app/config.json   # 持久化 Admin 修改的配置
+    networks:
+      - internal
+
+  backend:
+    build: ./backend
+    container_name: healthbot-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"                        # Android 手机直连
+    environment:
+      - LLM_SERVICE_URL=http://llm:8000   # 指向同网络内的 llm 容器
+    volumes:
+      - backend-data:/app/data            # H2 数据库持久化
+    depends_on:
+      - llm
+    networks:
+      - internal
+      - external
+
+  admin:
+    build: ./admin
+    container_name: healthbot-admin
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - external
+
+volumes:
+  backend-data:
+
+networks:
+  internal:      # llm 只在内网，不暴露到外部
+  external:
