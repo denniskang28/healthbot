@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Descriptions, Table, Button, Tag, Rate, Modal, Form, InputNumber, Input,
-  Space, Typography, Spin, message, Switch, Divider, Select, Radio, Alert } from 'antd';
+  Space, Typography, Spin, message, Divider, Select, Radio, Alert } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getProvider, getProviderRecords, rateRecord, updateProvider } from '../api/client';
@@ -37,22 +37,20 @@ const LlmConfigCard: React.FC<{ provider: ServiceProviderDto; onSaved: () => voi
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [llmProvider, setLlmProvider] = useState('anthropic');
-  const [mockMode, setMockMode] = useState(false);
 
   const existingConfig = useMemo(() => {
     try { return provider.config ? JSON.parse(provider.config) : {}; } catch { return {}; }
   }, [provider.config]);
 
+  const isMock = !!existingConfig.mockMode;
+
   useEffect(() => {
-    const cfg = existingConfig;
-    setLlmProvider(cfg.provider || 'anthropic');
-    setMockMode(cfg.mockMode ?? false);
+    setLlmProvider(existingConfig.provider || 'anthropic');
     form.setFieldsValue({
-      provider: cfg.provider || 'anthropic',
-      model: cfg.model || '',
-      mockMode: cfg.mockMode ?? false,
-      mockScript: cfg.mockScript || 'MEDICATION',
-      systemPrompt: cfg.systemPrompt || '',
+      provider: existingConfig.provider || 'anthropic',
+      model: existingConfig.model || '',
+      mockScript: existingConfig.mockScript || 'MEDICATION',
+      systemPrompt: existingConfig.systemPrompt || '',
     });
   }, [provider.config]);
 
@@ -73,7 +71,6 @@ const LlmConfigCard: React.FC<{ provider: ServiceProviderDto; onSaved: () => voi
     setSaving(true);
     try {
       const newConfig = { ...existingConfig, ...values };
-      // preserve existing apiKey if input is empty
       if (!values.apiKey) delete newConfig.apiKey;
       const updated = { ...provider, config: JSON.stringify(newConfig) };
       await updateProvider(provider.id, updated);
@@ -86,69 +83,63 @@ const LlmConfigCard: React.FC<{ provider: ServiceProviderDto; onSaved: () => voi
     }
   };
 
-  const providerMeta = PROVIDERS.find(p => p.value === existingConfig.provider);
-
   return (
     <Card title={<Title level={5} style={{ margin: 0 }}>{t('llmConfigCard')}</Title>}>
-      {existingConfig.provider && (
-        <div style={{ marginBottom: 16 }}>
-          <Text type="secondary">Current: </Text>
-          <Tag color={providerMeta?.color ?? 'blue'}>{existingConfig.provider}</Tag>
-          <Tag color="purple">{existingConfig.model}</Tag>
-          {existingConfig.mockMode
-            ? <Tag color="volcano">Mock ON</Tag>
-            : <Tag color="green">Live LLM</Tag>}
-        </div>
-      )}
-
-      <Form form={form} layout="vertical" onFinish={onSave}>
-        {/* Mock Mode */}
-        <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '16px 20px', marginBottom: 24 }}>
-          <Form.Item name="mockMode" valuePropName="checked" style={{ marginBottom: 8 }}>
-            <Switch checkedChildren="Mock ON" unCheckedChildren="Mock OFF" onChange={setMockMode} />
-          </Form.Item>
-          <Text type="secondary" style={{ fontSize: 12 }}>{t('mockModeHint')}</Text>
-          {mockMode && (
-            <Form.Item name="mockScript" label={t('mockScript')} style={{ marginTop: 16, marginBottom: 0 }}>
+      {isMock ? (
+        <>
+          <Alert type="warning" showIcon style={{ marginBottom: 16 }}
+            message={t('mockModeHint')} />
+          <Form form={form} layout="vertical" onFinish={onSave}>
+            <Form.Item name="mockScript" label={t('mockScript')}>
               <Radio.Group>
                 <Radio.Button value="MEDICATION">{t('mockScriptMedication')}</Radio.Button>
                 <Radio.Button value="ONLINE_CONSULTATION">{t('mockScriptOnline')}</Radio.Button>
                 <Radio.Button value="OFFLINE_APPOINTMENT">{t('mockScriptOffline')}</Radio.Button>
               </Radio.Group>
             </Form.Item>
+            <Alert type="info" showIcon style={{ marginBottom: 16 }}
+              message="Config is applied on the next chat request via routing rules." />
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={saving}>{t('save')}</Button>
+            </Form.Item>
+          </Form>
+        </>
+      ) : (
+        <>
+          {existingConfig.provider && (
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary">Current: </Text>
+              <Tag color={PROVIDERS.find(p => p.value === existingConfig.provider)?.color ?? 'blue'}>{existingConfig.provider}</Tag>
+              <Tag color="purple">{existingConfig.model}</Tag>
+            </div>
           )}
-        </div>
-
-        <Divider orientation="left">LLM Provider</Divider>
-
-        <Form.Item name="provider" label={t('provider')} rules={[{ required: true }]}>
-          <Select
-            options={PROVIDERS.map(p => ({ value: p.value, label: p.label }))}
-            onChange={handleProviderChange}
-          />
-        </Form.Item>
-
-        <Form.Item name="model" label={t('model')} rules={[{ required: true }]}>
-          <Select showSearch options={buildModelOptions(llmProvider)}
-            filterOption={(input, opt) => String(opt?.label ?? '').toLowerCase().includes(input.toLowerCase())} />
-        </Form.Item>
-
-        <Form.Item name="apiKey" label={t('apiKey')}
-          extra={existingConfig.apiKey ? `Current: ****...${String(existingConfig.apiKey).slice(-4)}` : 'No key configured'}>
-          <Input.Password placeholder="Enter new API key (leave empty to keep existing)" />
-        </Form.Item>
-
-        <Form.Item name="systemPrompt" label={t('systemPrompt')}>
-          <Input.TextArea rows={4} />
-        </Form.Item>
-
-        <Alert type="info" showIcon style={{ marginBottom: 16 }}
-          message="Config is applied on the next chat request via routing rules." />
-
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={saving}>{t('save')}</Button>
-        </Form.Item>
-      </Form>
+          <Form form={form} layout="vertical" onFinish={onSave}>
+            <Divider orientation="left">LLM Provider</Divider>
+            <Form.Item name="provider" label={t('provider')} rules={[{ required: true }]}>
+              <Select
+                options={PROVIDERS.map(p => ({ value: p.value, label: p.label }))}
+                onChange={handleProviderChange}
+              />
+            </Form.Item>
+            <Form.Item name="model" label={t('model')} rules={[{ required: true }]}>
+              <Select showSearch options={buildModelOptions(llmProvider)}
+                filterOption={(input, opt) => String(opt?.label ?? '').toLowerCase().includes(input.toLowerCase())} />
+            </Form.Item>
+            <Form.Item name="apiKey" label={t('apiKey')}
+              extra={existingConfig.apiKey ? `Current: ****...${String(existingConfig.apiKey).slice(-4)}` : 'No key configured'}>
+              <Input.Password placeholder="Enter new API key (leave empty to keep existing)" />
+            </Form.Item>
+            <Form.Item name="systemPrompt" label={t('systemPrompt')}>
+              <Input.TextArea rows={4} />
+            </Form.Item>
+            <Alert type="info" showIcon style={{ marginBottom: 16 }}
+              message="Config is applied on the next chat request via routing rules." />
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={saving}>{t('save')}</Button>
+            </Form.Item>
+          </Form>
+        </>
+      )}
     </Card>
   );
 };
