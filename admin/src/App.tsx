@@ -10,6 +10,9 @@ import LlmConfig from './pages/LlmConfig';
 import ChatHistory from './pages/ChatHistory';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Providers from './pages/Providers';
+import ProviderDetail from './pages/ProviderDetail';
+import RoutingRules from './pages/RoutingRules';
 
 const App: React.FC = () => {
   const [authed, setAuthed] = useState(!!localStorage.getItem('admin_token'));
@@ -32,6 +35,9 @@ const App: React.FC = () => {
               <Route path="/chat-history" element={<ChatHistory />} />
               <Route path="/llm-config" element={<LlmConfig />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/providers" element={<Providers />} />
+              <Route path="/providers/:id" element={<ProviderDetail />} />
+              <Route path="/routing-rules" element={<RoutingRules />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </AppLayout>

@@ -17,6 +17,8 @@ public class DataInitializer implements CommandLineRunner {
     private final LlmConfigRepository llmConfigRepository;
     private final AdminCredentialRepository adminCredentialRepository;
     private final AdminAuthService adminAuthService;
+    private final ServiceProviderRepository serviceProviderRepository;
+    private final RoutingRuleRepository routingRuleRepository;
 
     @Override
     public void run(String... args) {
@@ -67,6 +69,129 @@ public class DataInitializer implements CommandLineRunner {
             AdminCredential cred = new AdminCredential();
             cred.setPasswordHash(adminAuthService.hash("12345"));
             adminCredentialRepository.save(cred);
+        }
+
+        if (serviceProviderRepository.count() == 0) {
+            String sysPrompt = "You are a professional medical assistant for AIA Health insurance app. Help users with medical questions and guide them to appropriate care. Be empathetic and professional.";
+
+            ServiceProvider llm3 = new ServiceProvider();
+            llm3.setName("DeepSeek Medical");
+            llm3.setType("MEDICAL_LLM");
+            llm3.setCompany("DeepSeek");
+            llm3.setDescription("Cost-effective medical AI using DeepSeek, suitable for high-volume deployments.");
+            llm3.setPriority(100);
+            llm3.setConfig("{\"provider\":\"deepseek\",\"model\":\"deepseek-chat\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
+            ServiceProvider savedLlm3 = serviceProviderRepository.save(llm3);
+
+            ServiceProvider llm = new ServiceProvider();
+            llm.setName("Claude AI");
+            llm.setType("MEDICAL_LLM");
+            llm.setCompany("Anthropic");
+            llm.setDescription("Advanced medical AI powered by Claude, providing symptom analysis, health guidance, and clinical decision support.");
+            llm.setPriority(80);
+            llm.setEnabled(false);
+            llm.setConfig("{\"provider\":\"anthropic\",\"model\":\"claude-sonnet-4-6\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
+            serviceProviderRepository.save(llm);
+
+            ServiceProvider llm2 = new ServiceProvider();
+            llm2.setName("GPT-4 Medical");
+            llm2.setType("MEDICAL_LLM");
+            llm2.setCompany("OpenAI");
+            llm2.setDescription("Medical AI powered by GPT-4o, offering strong multilingual reasoning and clinical knowledge.");
+            llm2.setPriority(60);
+            llm2.setEnabled(false);
+            llm2.setConfig("{\"provider\":\"openai\",\"model\":\"gpt-4o\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
+            serviceProviderRepository.save(llm2);
+
+            ServiceProvider mockLlm = new ServiceProvider();
+            mockLlm.setName("Mock Simulation");
+            mockLlm.setType("MEDICAL_LLM");
+            mockLlm.setCompany("HealthBot");
+            mockLlm.setDescription("Simulated AI responses for demo and testing. No API key required. Follows a fixed demo script.");
+            mockLlm.setPriority(0);
+            mockLlm.setEnabled(false);
+            mockLlm.setConfig("{\"provider\":\"anthropic\",\"model\":\"claude-sonnet-4-6\",\"apiKey\":\"\",\"mockMode\":true,\"mockScript\":\"MEDICATION\"}");
+            serviceProviderRepository.save(mockLlm);
+
+            ServiceProvider oc1 = new ServiceProvider();
+            oc1.setName("MediConnect Online");
+            oc1.setType("ONLINE_CONSULTATION");
+            oc1.setCompany("MediConnect Health");
+            oc1.setDescription("Leading online medical consultation platform with 10,000+ licensed physicians available 24/7.");
+            oc1.setPriority(100);
+            ServiceProvider savedOc1 = serviceProviderRepository.save(oc1);
+
+            ServiceProvider oc2 = new ServiceProvider();
+            oc2.setName("CareCloud Doctors");
+            oc2.setType("ONLINE_CONSULTATION");
+            oc2.setCompany("CareCloud Medical");
+            oc2.setDescription("Cloud-based health consultation platform with AI-assisted triage and specialist matching.");
+            oc2.setPriority(80);
+            serviceProviderRepository.save(oc2);
+
+            ServiceProvider oa1 = new ServiceProvider();
+            oa1.setName("HealthNet Hospital Network");
+            oa1.setType("OFFLINE_APPOINTMENT");
+            oa1.setCompany("HealthNet Group");
+            oa1.setDescription("Nationwide hospital appointment booking across 500+ partner hospitals in major cities.");
+            oa1.setPriority(100);
+            ServiceProvider savedOa1 = serviceProviderRepository.save(oa1);
+
+            ServiceProvider oa2 = new ServiceProvider();
+            oa2.setName("Premier Care Centers");
+            oa2.setType("OFFLINE_APPOINTMENT");
+            oa2.setCompany("Premier Health");
+            oa2.setDescription("Premium multi-specialty medical centers with English-speaking doctors in major urban areas.");
+            oa2.setPriority(80);
+            serviceProviderRepository.save(oa2);
+
+            ServiceProvider op1 = new ServiceProvider();
+            op1.setName("QuickPharm Online");
+            op1.setType("ONLINE_PHARMACY");
+            op1.setCompany("QuickPharm");
+            op1.setDescription("Online pharmacy with 2-hour delivery, integrated with health insurance for direct billing.");
+            op1.setPriority(100);
+            ServiceProvider savedOp1 = serviceProviderRepository.save(op1);
+
+            ServiceProvider op2 = new ServiceProvider();
+            op2.setName("MedMart Pharmacy");
+            op2.setType("ONLINE_PHARMACY");
+            op2.setCompany("MedMart");
+            op2.setDescription("Certified online pharmacy with authentic medications, cold chain delivery, and 24/7 pharmacist support.");
+            op2.setPriority(80);
+            serviceProviderRepository.save(op2);
+
+            RoutingRule r0 = new RoutingRule();
+            r0.setName("Default LLM — DeepSeek");
+            r0.setServiceType("MEDICAL_LLM");
+            r0.setConditionJson("{}");
+            r0.setTargetProviderId(savedLlm3.getId());
+            r0.setPriority(0);
+            routingRuleRepository.save(r0);
+
+            RoutingRule r1 = new RoutingRule();
+            r1.setName("ZH - Online Consultation");
+            r1.setServiceType("ONLINE_CONSULTATION");
+            r1.setConditionJson("{\"language\":\"ZH\"}");
+            r1.setTargetProviderId(savedOc1.getId());
+            r1.setPriority(100);
+            routingRuleRepository.save(r1);
+
+            RoutingRule r2 = new RoutingRule();
+            r2.setName("ZH - Offline Appointment");
+            r2.setServiceType("OFFLINE_APPOINTMENT");
+            r2.setConditionJson("{\"language\":\"ZH\"}");
+            r2.setTargetProviderId(savedOa1.getId());
+            r2.setPriority(100);
+            routingRuleRepository.save(r2);
+
+            RoutingRule r3 = new RoutingRule();
+            r3.setName("ZH - Online Pharmacy");
+            r3.setServiceType("ONLINE_PHARMACY");
+            r3.setConditionJson("{\"language\":\"ZH\"}");
+            r3.setTargetProviderId(savedOp1.getId());
+            r3.setPriority(100);
+            routingRuleRepository.save(r3);
         }
 
         if (llmConfigRepository.count() == 0) {

@@ -3,11 +3,13 @@ package com.healthbot.backend.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.healthbot.backend.dto.*;
 import com.healthbot.backend.model.ChatMessage;
+import com.healthbot.backend.model.ServiceProvider;
 import com.healthbot.backend.model.User;
 import com.healthbot.backend.repository.ChatMessageRepository;
 import com.healthbot.backend.repository.ConsultationRepository;
 import com.healthbot.backend.repository.UserRepository;
 import com.healthbot.backend.service.LlmProxyService;
+import com.healthbot.backend.service.ProviderRoutingService;
 import com.healthbot.backend.service.SessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,7 @@ public class ChatController {
     private final UserRepository userRepository;
     private final LlmProxyService llmProxyService;
     private final SessionService sessionService;
+    private final ProviderRoutingService providerRoutingService;
 
     @PostMapping("/{userId}/message")
     public ResponseEntity<ChatResponseDto> sendMessage(
@@ -55,6 +58,12 @@ public class ChatController {
         // Update session state
         sessionService.updateState(userId, "CHATTING");
 
+        // Select MEDICAL_LLM provider via routing rules and apply its config
+        ServiceProvider llmProvider = providerRoutingService.selectMedicalLlm(language, null);
+        if (llmProvider != null) {
+            llmProxyService.applyProviderConfigJson(llmProvider.getConfig());
+        }
+
         // Call LLM
         LlmProxyService.ChatLlmResult llmResult = llmProxyService.chat(userId, content, history, language);
 
@@ -69,7 +78,21 @@ public class ChatController {
         ChatMessageDto userDto = toDto(userMsg);
         ChatMessageDto assistantDto = toDto(assistantMsg);
 
-        return ResponseEntity.ok(new ChatResponseDto(userDto, assistantDto, llmResult.actions()));
+        ActionsDto actions = llmResult.actions();
+        String recommendation = actions.getRecommendation();
+        if (recommendation != null) {
+            if (llmProvider != null) {
+                providerRoutingService.recordMedicalLlmCompletion(llmProvider, userId);
+            }
+            ServiceProvider provider = providerRoutingService.dispatch(recommendation, language, actions.getSpecialty(), userId);
+            if (provider != null) {
+                actions.setSelectedProviderId(provider.getId());
+                actions.setSelectedProviderName(provider.getName());
+                actions.setSelectedProviderCompany(provider.getCompany());
+            }
+        }
+
+        return ResponseEntity.ok(new ChatResponseDto(userDto, assistantDto, actions));
     }
 
     @GetMapping("/{userId}/history")

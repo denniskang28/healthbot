@@ -2,6 +2,175 @@
 
 ---
 
+## 2026-05-16 · MEDICAL_LLM 服务商优化：Mock 独立、DeepSeek 默认、服务次数统计
+
+**四项改动：**
+
+**1. Mock Simulation 独立为专属服务商**
+
+Mock 不再是每个 LLM provider 的一个开关，而是一个独立的 `MEDICAL_LLM` 服务商（`mockMode: true`）。通过 Admin 启用它、加一条路由规则指向它即可激活；真实 LLM provider（Claude/GPT-4/DeepSeek）的配置页面只保留 provider、model、API key、system prompt，不再显示 mock 开关。
+
+| 文件 | 改动 |
+|------|------|
+| `admin/src/pages/ProviderDetail.tsx` | `LlmConfigCard` 按 `existingConfig.mockMode` 分两套 UI：mock provider 只显示脚本选择；真实 provider 只显示 LLM 参数 |
+
+**2. 默认 MEDICAL_LLM 切换为 DeepSeek**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/config/DataInitializer.java` | DeepSeek Medical 优先级提至 100、enabled=true；Claude AI 降为 80、enabled=false；新增种子路由规则 `Default LLM — DeepSeek`（serviceType=MEDICAL_LLM，condition=`{}`，priority=0）—— 清库重启后自动生效 |
+
+**3. MEDICAL_LLM 服务次数统计**
+
+每次 LLM 给出有效推荐（recommendation 非 null），为当前活跃的 MEDICAL_LLM provider 写一条 `status=COMPLETED` 的 `ServiceRecord`，Admin Providers 列表的服务次数实时更新。
+
+| 文件 | 改动 |
+|------|------|
+| `backend/service/ProviderRoutingService.java` | 新增 `recordMedicalLlmCompletion(provider, userId)` |
+| `backend/controller/ChatController.java` | recommendation 非 null 时调用上述方法 |
+
+**4. 服务商详情页显示服务记录**
+
+原来 MEDICAL_LLM 服务商详情页只渲染 LLM 配置卡片，服务记录表格被 `else` 分支隐藏。现改为两块并列：LLM 配置卡片（仅 MEDICAL_LLM）+ 服务记录表格（所有类型）。
+
+| 文件 | 改动 |
+|------|------|
+| `admin/src/pages/ProviderDetail.tsx` | 三元改为条件渲染 + 始终显示服务记录表格 |
+
+---
+
+## 2026-05-16 · LLM 配置移入 MEDICAL_LLM 服务商 + 专科路由
+
+**需求：** 把原来几个 LLM provider（Claude、GPT-4、DeepSeek、Mock）做成 MEDICAL_LLM 服务商，LLM 的 provider/model/API key/system prompt 全部在服务商详情页配置；通过路由规则决定用哪个 MEDICAL_LLM 服务商。同时支持按专科路由（如将心内科问诊路由给专科服务商）。
+
+**架构变化：**
+
+```
+聊天请求进入 ChatController
+  ↓
+ProviderRoutingService.selectMedicalLlm(language, specialty)
+  → 按路由规则选优先级最高的已启用 MEDICAL_LLM 服务商
+  ↓
+LlmProxyService.applyProviderConfigJson(provider.config)
+  → 把该服务商的 JSON config push 给 llm-service（热重载，无需重启）
+  ↓
+正常 LLM 调用（使用该服务商的 model/key/mockMode 等配置）
+```
+
+**路由条件支持 AND 逻辑：**
+
+| conditionJson | 匹配规则 |
+|--------------|---------|
+| `{}` | 匹配所有请求 |
+| `{"language":"ZH"}` | 仅匹配中文用户 |
+| `{"specialty":"CARDIOLOGY"}` | 仅匹配心内科推荐 |
+| `{"language":"ZH","specialty":"NEUROLOGY"}` | 中文 + 神经科（两个条件同时满足） |
+
+**种子 MEDICAL_LLM 服务商：**
+
+| 服务商 | 优先级 | 启用 | 说明 |
+|--------|--------|------|------|
+| Claude AI | 100 | ✓ | Anthropic claude-sonnet-4-6，默认激活 |
+| GPT-4 Medical | 80 | - | OpenAI gpt-4o，备用 |
+| DeepSeek Medical | 60 | - | DeepSeek deepseek-chat，低成本备用 |
+| Mock Simulation | 0 | - | mockMode=true，演示专用，零成本 |
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/config/DataInitializer.java` | 新增 4 个 MEDICAL_LLM 服务商种子（含完整 config JSON）；非 LLM 服务商改用无品牌虚构公司名 |
+| `backend/service/ProviderRoutingService.java` | 新增 `selectMedicalLlm(language, specialty)`；`conditionMatches()` 支持 language + specialty AND 逻辑 |
+| `backend/service/LlmProxyService.java` | 新增 `applyProviderConfigJson(configJson)` 解析并 push 到 llm-service |
+| `backend/controller/ChatController.java` | 每次聊天前调用 `selectMedicalLlm` + `applyProviderConfigJson`；`dispatch()` 传入 specialty |
+| `backend/dto/ActionsDto.java` | 新增 `specialty` 字段（LLM 分类结果，用于路由） |
+| `llm-service/llm_client.py` | `_CLASSIFY_TOOL` 新增 `specialty` 枚举字段（10 个专科值）；`CLASSIFY_SYSTEM` 新增专科分配规则 |
+| `llm-service/models.py` | `ChatResponse` 新增 `specialty` 字段 |
+| `llm-service/mock_responses.py` | 各脚本新增 `specialty` 值（RESPIRATORY / NEUROLOGY / ENDOCRINOLOGY） |
+| `admin/src/pages/ProviderDetail.tsx` | MEDICAL_LLM 服务商展示 `LlmConfigCard`（Mock 开关、脚本选择、provider/model/key/system prompt 全配置）；保存时 API key 为空则保留现有 key |
+| `admin/src/pages/RoutingRules.tsx` | 路由规则服务类型新增 MEDICAL_LLM；条件预设生成所有 language × specialty 组合 |
+| `admin/src/components/Layout.tsx` | 移除独立「LLM Config」菜单项（配置已移入服务商详情页） |
+| `admin/src/context/LanguageContext.tsx` | 新增 `llmConfigCard` 翻译键 |
+
+---
+
+## 2026-05-16 · 可配置服务商管理 + 路由规则引擎
+
+**需求：** 把医疗大语言模型、线上问诊、线下预约、线上药房做成可配置可替换的服务商，支持多服务商并存、规则引擎按条件路由、Admin 可视化管理。
+
+**整体架构：**
+
+```
+LLM 判断 recommendation（ONLINE_CONSULTATION / OFFLINE_APPOINTMENT / MEDICATION）
+  ↓
+ChatController 调用 ProviderRoutingService.dispatch()
+  ↓
+规则引擎：按优先级评估 RoutingRule 列表
+  ├── 条件匹配（如 language=ZH）且有指定目标 → 选该服务商
+  ├── 条件匹配但无指定目标 → fallthrough 到默认
+  └── 无匹配规则 → 取优先级最高的已启用服务商
+  ↓
+记录 ServiceRecord（status=DISPATCHED）
+  ↓
+ActionsDto 返回 selectedProviderId / selectedProviderName / selectedProviderCompany
+```
+
+**服务商类型：**
+
+| 类型 | 说明 |
+|------|------|
+| `MEDICAL_LLM` | 医疗大语言模型，路由规则决定用哪个 |
+| `ONLINE_CONSULTATION` | 线上问诊平台 |
+| `OFFLINE_APPOINTMENT` | 线下预约网络 |
+| `ONLINE_PHARMACY` | 线上药房 |
+| `OTHER` | 其他类型 |
+
+**种子非 LLM 服务商（首次启动自动写入）：**
+
+| 服务商 | 类型 | 公司 | 优先级 |
+|--------|------|------|--------|
+| MediConnect Online | ONLINE_CONSULTATION | MediConnect Health | 100 |
+| CareCloud Doctors | ONLINE_CONSULTATION | CareCloud Medical | 80 |
+| HealthNet Hospital Network | OFFLINE_APPOINTMENT | HealthNet Group | 100 |
+| Premier Care Centers | OFFLINE_APPOINTMENT | Premier Health | 80 |
+| QuickPharm Online | ONLINE_PHARMACY | QuickPharm | 100 |
+| MedMart Pharmacy | ONLINE_PHARMACY | MedMart Health | 80 |
+
+**默认路由规则：**
+
+| 规则 | 条件 | 目标服务商 | 优先级 |
+|------|------|-----------|--------|
+| ZH - Online Consultation | `{"language":"ZH"}` | MediConnect Online | 100 |
+| ZH - Offline Appointment | `{"language":"ZH"}` | HealthNet Hospital Network | 100 |
+| ZH - Online Pharmacy | `{"language":"ZH"}` | QuickPharm Online | 100 |
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/model/ServiceProvider.java` | **新增** — 服务商实体（name、type、company、description、enabled、priority、config JSON） |
+| `backend/model/ServiceRecord.java` | **新增** — 调度记录实体（providerId、userId、serviceType、status、rating、notes） |
+| `backend/model/RoutingRule.java` | **新增** — 路由规则实体（serviceType、conditionJson、targetProviderId、priority、enabled） |
+| `backend/repository/ServiceProviderRepository.java` | **新增** |
+| `backend/repository/ServiceRecordRepository.java` | **新增** — 含 `countByProviderId`、`avgRatingByProviderId` 聚合查询 |
+| `backend/repository/RoutingRuleRepository.java` | **新增** |
+| `backend/service/ProviderRoutingService.java` | **新增** — `dispatch(recommendation, language, userId)` 实现完整规则引擎 |
+| `backend/controller/ProviderController.java` | **新增** — 服务商 CRUD（含启用/禁用、服务记录查询、评分）；路由规则 CRUD |
+| `backend/controller/ChatController.java` | 聊天完成后调用 `dispatch()`，将服务商信息写入 `ActionsDto` |
+| `backend/dto/ActionsDto.java` | 新增 `selectedProviderId / selectedProviderName / selectedProviderCompany` |
+| `backend/service/LlmProxyService.java` | 更新 `ActionsDto` 构造以匹配新字段 |
+| `backend/config/DataInitializer.java` | 新增服务商和路由规则种子数据块（`count() == 0` 守卫） |
+| `admin/src/pages/Providers.tsx` | **新页面** — 服务商列表（类型 Tag、启用开关、服务次数、评分），支持新增/编辑/删除 |
+| `admin/src/pages/ProviderDetail.tsx` | **新页面** — 服务商详情（基本信息 + 服务记录表格 + 评分操作） |
+| `admin/src/pages/RoutingRules.tsx` | **新页面** — 路由规则管理（条件配置、目标服务商选择、优先级排序、启用开关） |
+| `admin/src/api/types.ts` | 新增 `ServiceProviderDto`、`ServiceRecordDto`、`RoutingRuleDto` |
+| `admin/src/api/client.ts` | 新增服务商和路由规则的全套 API 调用 |
+| `admin/src/context/LanguageContext.tsx` | 新增 EN/ZH 翻译键（服务商类型、状态、操作按钮等 30+ 个键） |
+| `admin/src/App.tsx` | 注册 `/providers`、`/providers/:id`、`/routing-rules` 路由 |
+| `admin/src/components/Layout.tsx` | 侧边栏新增「服务商」（ApiOutlined）和「路由规则」（BranchesOutlined）菜单项 |
+
+---
+
 ## 2026-05-16 · Android 多环境支持 + 阿里云部署
 
 **需求：** 支持本地模拟器调试和云端真机测试并存，测试人员用自己手机连接阿里云服务器。
