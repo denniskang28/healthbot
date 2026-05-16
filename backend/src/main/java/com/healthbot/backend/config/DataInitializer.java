@@ -81,50 +81,50 @@ public class DataInitializer implements CommandLineRunner {
             serviceProviderRepository.save(llm);
 
             ServiceProvider oc1 = new ServiceProvider();
-            oc1.setName("PingAn Good Doctor");
+            oc1.setName("MediConnect Online");
             oc1.setType("ONLINE_CONSULTATION");
-            oc1.setCompany("PingAn Health");
+            oc1.setCompany("MediConnect Health");
             oc1.setDescription("Leading online medical consultation platform with 10,000+ licensed physicians available 24/7.");
             oc1.setPriority(100);
             ServiceProvider savedOc1 = serviceProviderRepository.save(oc1);
 
             ServiceProvider oc2 = new ServiceProvider();
-            oc2.setName("Aliyun Health");
+            oc2.setName("CareCloud Doctors");
             oc2.setType("ONLINE_CONSULTATION");
-            oc2.setCompany("Alibaba Cloud");
-            oc2.setDescription("Cloud-based health consultation platform backed by Alibaba's technology infrastructure.");
+            oc2.setCompany("CareCloud Medical");
+            oc2.setDescription("Cloud-based health consultation platform with AI-assisted triage and specialist matching.");
             oc2.setPriority(80);
             serviceProviderRepository.save(oc2);
 
             ServiceProvider oa1 = new ServiceProvider();
-            oa1.setName("PingAn Hospital Network");
+            oa1.setName("HealthNet Hospital Network");
             oa1.setType("OFFLINE_APPOINTMENT");
-            oa1.setCompany("PingAn Health");
-            oa1.setDescription("Nationwide hospital appointment booking across 500+ partner hospitals in major Chinese cities.");
+            oa1.setCompany("HealthNet Group");
+            oa1.setDescription("Nationwide hospital appointment booking across 500+ partner hospitals in major cities.");
             oa1.setPriority(100);
             ServiceProvider savedOa1 = serviceProviderRepository.save(oa1);
 
             ServiceProvider oa2 = new ServiceProvider();
-            oa2.setName("United Family Healthcare");
+            oa2.setName("Premier Care Centers");
             oa2.setType("OFFLINE_APPOINTMENT");
-            oa2.setCompany("UFH Group");
-            oa2.setDescription("Premium international hospital group with English-speaking doctors in Beijing, Shanghai, and Guangzhou.");
+            oa2.setCompany("Premier Health");
+            oa2.setDescription("Premium multi-specialty medical centers with English-speaking doctors in major urban areas.");
             oa2.setPriority(80);
             serviceProviderRepository.save(oa2);
 
             ServiceProvider op1 = new ServiceProvider();
-            op1.setName("PingAn Pharmacy");
+            op1.setName("QuickPharm Online");
             op1.setType("ONLINE_PHARMACY");
-            op1.setCompany("PingAn Health");
-            op1.setDescription("Online pharmacy with 2-hour delivery, integrated with PingAn Health insurance for direct billing.");
+            op1.setCompany("QuickPharm");
+            op1.setDescription("Online pharmacy with 2-hour delivery, integrated with health insurance for direct billing.");
             op1.setPriority(100);
             ServiceProvider savedOp1 = serviceProviderRepository.save(op1);
 
             ServiceProvider op2 = new ServiceProvider();
-            op2.setName("JD Pharmacy");
+            op2.setName("MedMart Pharmacy");
             op2.setType("ONLINE_PHARMACY");
-            op2.setCompany("JD.com");
-            op2.setDescription("JD.com's certified online pharmacy with authentic medications and cold chain delivery.");
+            op2.setCompany("MedMart");
+            op2.setDescription("Certified online pharmacy with authentic medications, cold chain delivery, and 24/7 pharmacist support.");
             op2.setPriority(80);
             serviceProviderRepository.save(op2);
 
