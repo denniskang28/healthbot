@@ -74,12 +74,22 @@ public class DataInitializer implements CommandLineRunner {
         if (serviceProviderRepository.count() == 0) {
             String sysPrompt = "You are a professional medical assistant for AIA Health insurance app. Help users with medical questions and guide them to appropriate care. Be empathetic and professional.";
 
+            ServiceProvider llm3 = new ServiceProvider();
+            llm3.setName("DeepSeek Medical");
+            llm3.setType("MEDICAL_LLM");
+            llm3.setCompany("DeepSeek");
+            llm3.setDescription("Cost-effective medical AI using DeepSeek, suitable for high-volume deployments.");
+            llm3.setPriority(100);
+            llm3.setConfig("{\"provider\":\"deepseek\",\"model\":\"deepseek-chat\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
+            ServiceProvider savedLlm3 = serviceProviderRepository.save(llm3);
+
             ServiceProvider llm = new ServiceProvider();
             llm.setName("Claude AI");
             llm.setType("MEDICAL_LLM");
             llm.setCompany("Anthropic");
             llm.setDescription("Advanced medical AI powered by Claude, providing symptom analysis, health guidance, and clinical decision support.");
-            llm.setPriority(100);
+            llm.setPriority(80);
+            llm.setEnabled(false);
             llm.setConfig("{\"provider\":\"anthropic\",\"model\":\"claude-sonnet-4-6\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
             serviceProviderRepository.save(llm);
 
@@ -88,20 +98,10 @@ public class DataInitializer implements CommandLineRunner {
             llm2.setType("MEDICAL_LLM");
             llm2.setCompany("OpenAI");
             llm2.setDescription("Medical AI powered by GPT-4o, offering strong multilingual reasoning and clinical knowledge.");
-            llm2.setPriority(80);
+            llm2.setPriority(60);
             llm2.setEnabled(false);
             llm2.setConfig("{\"provider\":\"openai\",\"model\":\"gpt-4o\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
             serviceProviderRepository.save(llm2);
-
-            ServiceProvider llm3 = new ServiceProvider();
-            llm3.setName("DeepSeek Medical");
-            llm3.setType("MEDICAL_LLM");
-            llm3.setCompany("DeepSeek");
-            llm3.setDescription("Cost-effective medical AI using DeepSeek, suitable for high-volume deployments.");
-            llm3.setPriority(60);
-            llm3.setEnabled(false);
-            llm3.setConfig("{\"provider\":\"deepseek\",\"model\":\"deepseek-chat\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
-            serviceProviderRepository.save(llm3);
 
             ServiceProvider mockLlm = new ServiceProvider();
             mockLlm.setName("Mock Simulation");
@@ -160,6 +160,14 @@ public class DataInitializer implements CommandLineRunner {
             op2.setDescription("Certified online pharmacy with authentic medications, cold chain delivery, and 24/7 pharmacist support.");
             op2.setPriority(80);
             serviceProviderRepository.save(op2);
+
+            RoutingRule r0 = new RoutingRule();
+            r0.setName("Default LLM — DeepSeek");
+            r0.setServiceType("MEDICAL_LLM");
+            r0.setConditionJson("{}");
+            r0.setTargetProviderId(savedLlm3.getId());
+            r0.setPriority(0);
+            routingRuleRepository.save(r0);
 
             RoutingRule r1 = new RoutingRule();
             r1.setName("ZH - Online Consultation");
