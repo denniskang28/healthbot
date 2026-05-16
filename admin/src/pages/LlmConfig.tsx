@@ -17,7 +17,7 @@ const MODEL_PRESETS: Record<string, string[]> = {
   anthropic: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
   openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   qwen:      ['qwen-max', 'qwen-plus', 'qwen-turbo'],
-  deepseek:  ['deepseek-chat', 'deepseek-reasoner'],
+  deepseek:  ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-flash'],
 };
 
 const LlmConfig: React.FC = () => {
