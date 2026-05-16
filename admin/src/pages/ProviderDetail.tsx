@@ -241,13 +241,13 @@ const ProviderDetail: React.FC = () => {
         </Descriptions>
       </Card>
 
-      {provider.type === 'MEDICAL_LLM' ? (
+      {provider.type === 'MEDICAL_LLM' && (
         <LlmConfigCard provider={provider} onSaved={load} />
-      ) : (
-        <Card title={<Title level={5} style={{ margin: 0 }}>{t('serviceRecords')}</Title>}>
-          <Table dataSource={records} columns={recordColumns} rowKey="id" size="middle" pagination={{ pageSize: 20 }} />
-        </Card>
       )}
+
+      <Card title={<Title level={5} style={{ margin: 0 }}>{t('serviceRecords')}</Title>}>
+        <Table dataSource={records} columns={recordColumns} rowKey="id" size="middle" pagination={{ pageSize: 20 }} />
+      </Card>
 
       <Modal title={t('rateService')} open={!!ratingRecord} onOk={handleRate}
         onCancel={() => setRatingRecord(null)} confirmLoading={rateSaving} destroyOnClose>
