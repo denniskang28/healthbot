@@ -46,7 +46,8 @@ source venv/bin/activate
 nohup uvicorn main:app --host 127.0.0.1 --port 8000 > "$LOG_DIR/llm.log" 2>&1 &
 echo "      LLM service started (pid $!)."
 
-# Backend
+# Backend — cd first so H2 ./data/ resolves to backend/data/ consistently
+cd "$PROJECT_DIR/backend"
 sleep 2
 nohup java -jar "$BACKEND_JAR" > "$LOG_DIR/backend.log" 2>&1 &
 echo "      Backend started (pid $!)."
