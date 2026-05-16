@@ -17,6 +17,8 @@ public class DataInitializer implements CommandLineRunner {
     private final LlmConfigRepository llmConfigRepository;
     private final AdminCredentialRepository adminCredentialRepository;
     private final AdminAuthService adminAuthService;
+    private final ServiceProviderRepository serviceProviderRepository;
+    private final RoutingRuleRepository routingRuleRepository;
 
     @Override
     public void run(String... args) {
@@ -67,6 +69,88 @@ public class DataInitializer implements CommandLineRunner {
             AdminCredential cred = new AdminCredential();
             cred.setPasswordHash(adminAuthService.hash("12345"));
             adminCredentialRepository.save(cred);
+        }
+
+        if (serviceProviderRepository.count() == 0) {
+            ServiceProvider llm = new ServiceProvider();
+            llm.setName("Anthropic Claude");
+            llm.setType("MEDICAL_LLM");
+            llm.setCompany("Anthropic");
+            llm.setDescription("Advanced medical AI powered by Claude, providing symptom analysis, health guidance, and clinical decision support.");
+            llm.setPriority(100);
+            serviceProviderRepository.save(llm);
+
+            ServiceProvider oc1 = new ServiceProvider();
+            oc1.setName("PingAn Good Doctor");
+            oc1.setType("ONLINE_CONSULTATION");
+            oc1.setCompany("PingAn Health");
+            oc1.setDescription("Leading online medical consultation platform with 10,000+ licensed physicians available 24/7.");
+            oc1.setPriority(100);
+            ServiceProvider savedOc1 = serviceProviderRepository.save(oc1);
+
+            ServiceProvider oc2 = new ServiceProvider();
+            oc2.setName("Aliyun Health");
+            oc2.setType("ONLINE_CONSULTATION");
+            oc2.setCompany("Alibaba Cloud");
+            oc2.setDescription("Cloud-based health consultation platform backed by Alibaba's technology infrastructure.");
+            oc2.setPriority(80);
+            serviceProviderRepository.save(oc2);
+
+            ServiceProvider oa1 = new ServiceProvider();
+            oa1.setName("PingAn Hospital Network");
+            oa1.setType("OFFLINE_APPOINTMENT");
+            oa1.setCompany("PingAn Health");
+            oa1.setDescription("Nationwide hospital appointment booking across 500+ partner hospitals in major Chinese cities.");
+            oa1.setPriority(100);
+            ServiceProvider savedOa1 = serviceProviderRepository.save(oa1);
+
+            ServiceProvider oa2 = new ServiceProvider();
+            oa2.setName("United Family Healthcare");
+            oa2.setType("OFFLINE_APPOINTMENT");
+            oa2.setCompany("UFH Group");
+            oa2.setDescription("Premium international hospital group with English-speaking doctors in Beijing, Shanghai, and Guangzhou.");
+            oa2.setPriority(80);
+            serviceProviderRepository.save(oa2);
+
+            ServiceProvider op1 = new ServiceProvider();
+            op1.setName("PingAn Pharmacy");
+            op1.setType("ONLINE_PHARMACY");
+            op1.setCompany("PingAn Health");
+            op1.setDescription("Online pharmacy with 2-hour delivery, integrated with PingAn Health insurance for direct billing.");
+            op1.setPriority(100);
+            ServiceProvider savedOp1 = serviceProviderRepository.save(op1);
+
+            ServiceProvider op2 = new ServiceProvider();
+            op2.setName("JD Pharmacy");
+            op2.setType("ONLINE_PHARMACY");
+            op2.setCompany("JD.com");
+            op2.setDescription("JD.com's certified online pharmacy with authentic medications and cold chain delivery.");
+            op2.setPriority(80);
+            serviceProviderRepository.save(op2);
+
+            RoutingRule r1 = new RoutingRule();
+            r1.setName("ZH - Online Consultation");
+            r1.setServiceType("ONLINE_CONSULTATION");
+            r1.setConditionJson("{\"language\":\"ZH\"}");
+            r1.setTargetProviderId(savedOc1.getId());
+            r1.setPriority(100);
+            routingRuleRepository.save(r1);
+
+            RoutingRule r2 = new RoutingRule();
+            r2.setName("ZH - Offline Appointment");
+            r2.setServiceType("OFFLINE_APPOINTMENT");
+            r2.setConditionJson("{\"language\":\"ZH\"}");
+            r2.setTargetProviderId(savedOa1.getId());
+            r2.setPriority(100);
+            routingRuleRepository.save(r2);
+
+            RoutingRule r3 = new RoutingRule();
+            r3.setName("ZH - Online Pharmacy");
+            r3.setServiceType("ONLINE_PHARMACY");
+            r3.setConditionJson("{\"language\":\"ZH\"}");
+            r3.setTargetProviderId(savedOp1.getId());
+            r3.setPriority(100);
+            routingRuleRepository.save(r3);
         }
 
         if (llmConfigRepository.count() == 0) {

@@ -91,3 +91,40 @@ export interface LlmConfigDto {
   mockMode: boolean;
   mockScript: string; // MEDICATION | ONLINE_CONSULTATION | OFFLINE_APPOINTMENT
 }
+
+export interface ServiceProviderDto {
+  id: number;
+  name: string;
+  type: string;
+  company: string;
+  description: string;
+  enabled: boolean;
+  priority: number;
+  config: string | null;
+  createdAt: string;
+  serviceCount: number;
+  avgRating: number | null;
+}
+
+export interface ServiceRecordDto {
+  id: number;
+  userId: number;
+  userName: string;
+  serviceType: string;
+  status: string;
+  rating: number | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface RoutingRuleDto {
+  id: number;
+  name: string;
+  serviceType: string;
+  conditionJson: string;
+  targetProviderId: number | null;
+  targetProviderName: string | null;
+  priority: number;
+  enabled: boolean;
+  createdAt: string;
+}

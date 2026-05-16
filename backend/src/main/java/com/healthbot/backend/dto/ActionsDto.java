@@ -21,4 +21,7 @@ public class ActionsDto {
     private String conclusion;
     private String recommendation; // ONLINE_CONSULTATION | OFFLINE_APPOINTMENT | MEDICATION
     private List<MedicineDto> prescription;
+    private Long selectedProviderId;
+    private String selectedProviderName;
+    private String selectedProviderCompany;
 }

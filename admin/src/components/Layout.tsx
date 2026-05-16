@@ -3,7 +3,7 @@ import { Layout, Menu, Button, Typography, Space, theme, Popconfirm } from 'antd
 import {
   DashboardOutlined, MedicineBoxOutlined, ShoppingCartOutlined,
   SettingOutlined, TranslationOutlined, HeartOutlined, MessageOutlined,
-  LogoutOutlined,
+  LogoutOutlined, ApiOutlined, BranchesOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
@@ -23,6 +23,8 @@ const AppLayout: React.FC<{ children: React.ReactNode; onLogout: () => void }> =
     { key: '/consultations', icon: <MedicineBoxOutlined />, label: t('consultations') },
     { key: '/purchases', icon: <ShoppingCartOutlined />, label: t('purchases') },
     { key: '/chat-history', icon: <MessageOutlined />, label: t('chatHistory') },
+    { key: '/providers', icon: <ApiOutlined />, label: t('providers') },
+    { key: '/routing-rules', icon: <BranchesOutlined />, label: t('routingRules') },
     { key: '/llm-config', icon: <SettingOutlined />, label: t('llmConfig') },
     { key: '/settings', icon: <SettingOutlined />, label: t('settings') },
   ];

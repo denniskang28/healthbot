@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { ActiveUserEntry, ConsultationEntry, PurchaseEntry, LlmConfigDto, UserDto, ChatMessageDto } from './types';
+import type { ActiveUserEntry, ConsultationEntry, PurchaseEntry, LlmConfigDto, UserDto, ChatMessageDto, ServiceProviderDto, ServiceRecordDto, RoutingRuleDto } from './types';
 
 const api = axios.create({ baseURL: '' });
 
@@ -30,3 +30,18 @@ export const getChatHistory = (userId: number) => api.get<ChatMessageDto[]>(`/ad
 export const deleteChatHistory = (userId: number) => api.delete(`/admin/chat-history/${userId}`);
 export const login = (password: string) => api.post<{ token: string }>('/admin/auth/login', { password }).then(r => r.data);
 export const changePassword = (currentPassword: string, newPassword: string) => api.put('/admin/auth/password', { currentPassword, newPassword });
+
+export const getProviders = () => api.get<ServiceProviderDto[]>('/admin/providers').then(r => r.data);
+export const getProvider = (id: number) => api.get<ServiceProviderDto>(`/admin/providers/${id}`).then(r => r.data);
+export const createProvider = (data: Partial<ServiceProviderDto>) => api.post<ServiceProviderDto>('/admin/providers', data).then(r => r.data);
+export const updateProvider = (id: number, data: Partial<ServiceProviderDto>) => api.put<ServiceProviderDto>(`/admin/providers/${id}`, data).then(r => r.data);
+export const deleteProvider = (id: number) => api.delete(`/admin/providers/${id}`);
+export const toggleProvider = (id: number) => api.patch<ServiceProviderDto>(`/admin/providers/${id}/toggle`).then(r => r.data);
+export const getProviderRecords = (id: number) => api.get<ServiceRecordDto[]>(`/admin/providers/${id}/records`).then(r => r.data);
+export const rateRecord = (recordId: number, rating: number, notes?: string) => api.patch(`/admin/providers/records/${recordId}/rate`, { rating, notes });
+
+export const getRoutingRules = () => api.get<RoutingRuleDto[]>('/admin/routing-rules').then(r => r.data);
+export const createRoutingRule = (data: Partial<RoutingRuleDto>) => api.post<RoutingRuleDto>('/admin/routing-rules', data).then(r => r.data);
+export const updateRoutingRule = (id: number, data: Partial<RoutingRuleDto>) => api.put<RoutingRuleDto>(`/admin/routing-rules/${id}`, data).then(r => r.data);
+export const deleteRoutingRule = (id: number) => api.delete(`/admin/routing-rules/${id}`);
+export const toggleRoutingRule = (id: number) => api.patch<RoutingRuleDto>(`/admin/routing-rules/${id}/toggle`).then(r => r.data);
