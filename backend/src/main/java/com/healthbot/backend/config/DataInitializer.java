@@ -72,13 +72,46 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (serviceProviderRepository.count() == 0) {
+            String sysPrompt = "You are a professional medical assistant for AIA Health insurance app. Help users with medical questions and guide them to appropriate care. Be empathetic and professional.";
+
             ServiceProvider llm = new ServiceProvider();
-            llm.setName("Anthropic Claude");
+            llm.setName("Claude AI");
             llm.setType("MEDICAL_LLM");
             llm.setCompany("Anthropic");
             llm.setDescription("Advanced medical AI powered by Claude, providing symptom analysis, health guidance, and clinical decision support.");
             llm.setPriority(100);
+            llm.setConfig("{\"provider\":\"anthropic\",\"model\":\"claude-sonnet-4-6\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
             serviceProviderRepository.save(llm);
+
+            ServiceProvider llm2 = new ServiceProvider();
+            llm2.setName("GPT-4 Medical");
+            llm2.setType("MEDICAL_LLM");
+            llm2.setCompany("OpenAI");
+            llm2.setDescription("Medical AI powered by GPT-4o, offering strong multilingual reasoning and clinical knowledge.");
+            llm2.setPriority(80);
+            llm2.setEnabled(false);
+            llm2.setConfig("{\"provider\":\"openai\",\"model\":\"gpt-4o\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
+            serviceProviderRepository.save(llm2);
+
+            ServiceProvider llm3 = new ServiceProvider();
+            llm3.setName("DeepSeek Medical");
+            llm3.setType("MEDICAL_LLM");
+            llm3.setCompany("DeepSeek");
+            llm3.setDescription("Cost-effective medical AI using DeepSeek, suitable for high-volume deployments.");
+            llm3.setPriority(60);
+            llm3.setEnabled(false);
+            llm3.setConfig("{\"provider\":\"deepseek\",\"model\":\"deepseek-chat\",\"apiKey\":\"\",\"mockMode\":false,\"mockScript\":\"MEDICATION\",\"systemPrompt\":\"" + sysPrompt.replace("\"", "\\\"") + "\"}");
+            serviceProviderRepository.save(llm3);
+
+            ServiceProvider mockLlm = new ServiceProvider();
+            mockLlm.setName("Mock Simulation");
+            mockLlm.setType("MEDICAL_LLM");
+            mockLlm.setCompany("HealthBot");
+            mockLlm.setDescription("Simulated AI responses for demo and testing. No API key required. Follows a fixed demo script.");
+            mockLlm.setPriority(0);
+            mockLlm.setEnabled(false);
+            mockLlm.setConfig("{\"provider\":\"anthropic\",\"model\":\"claude-sonnet-4-6\",\"apiKey\":\"\",\"mockMode\":true,\"mockScript\":\"MEDICATION\"}");
+            serviceProviderRepository.save(mockLlm);
 
             ServiceProvider oc1 = new ServiceProvider();
             oc1.setName("MediConnect Online");

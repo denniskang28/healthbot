@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Card, Descriptions, Table, Button, Tag, Rate, Modal, Form, InputNumber, Input, Space, Typography, Spin, message } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Card, Descriptions, Table, Button, Tag, Rate, Modal, Form, InputNumber, Input,
+  Space, Typography, Spin, message, Switch, Divider, Select, Radio, Alert } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProvider, getProviderRecords, rateRecord } from '../api/client';
+import { getProvider, getProviderRecords, rateRecord, updateProvider } from '../api/client';
 import type { ServiceProviderDto, ServiceRecordDto } from '../api/types';
 import { useLang } from '../context/LanguageContext';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const TYPE_COLORS: Record<string, string> = {
   MEDICAL_LLM: 'purple',
@@ -16,6 +17,143 @@ const TYPE_COLORS: Record<string, string> = {
   OTHER: 'default',
 };
 
+const PROVIDERS = [
+  { value: 'anthropic', label: 'Anthropic (Claude)',  color: 'blue'     },
+  { value: 'openai',    label: 'OpenAI (ChatGPT)',    color: 'green'    },
+  { value: 'qwen',      label: '阿里云 (千问 Qwen)',   color: 'orange'   },
+  { value: 'deepseek',  label: 'DeepSeek',            color: 'geekblue' },
+];
+
+const MODEL_PRESETS: Record<string, string[]> = {
+  anthropic: ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5-20251001'],
+  openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+  qwen:      ['qwen-max', 'qwen-plus', 'qwen-turbo'],
+  deepseek:  ['deepseek-chat', 'deepseek-reasoner'],
+};
+
+// ── LLM Config sub-form (only for MEDICAL_LLM providers) ─────────────────────
+const LlmConfigCard: React.FC<{ provider: ServiceProviderDto; onSaved: () => void }> = ({ provider, onSaved }) => {
+  const { t } = useLang();
+  const [form] = Form.useForm();
+  const [saving, setSaving] = useState(false);
+  const [llmProvider, setLlmProvider] = useState('anthropic');
+  const [mockMode, setMockMode] = useState(false);
+
+  const existingConfig = useMemo(() => {
+    try { return provider.config ? JSON.parse(provider.config) : {}; } catch { return {}; }
+  }, [provider.config]);
+
+  useEffect(() => {
+    const cfg = existingConfig;
+    setLlmProvider(cfg.provider || 'anthropic');
+    setMockMode(cfg.mockMode ?? false);
+    form.setFieldsValue({
+      provider: cfg.provider || 'anthropic',
+      model: cfg.model || '',
+      mockMode: cfg.mockMode ?? false,
+      mockScript: cfg.mockScript || 'MEDICATION',
+      systemPrompt: cfg.systemPrompt || '',
+    });
+  }, [provider.config]);
+
+  const handleProviderChange = (val: string) => {
+    setLlmProvider(val);
+    const presets = MODEL_PRESETS[val] ?? [];
+    if (presets.length > 0) form.setFieldValue('model', presets[0]);
+  };
+
+  const buildModelOptions = (prov: string) => {
+    const presets = MODEL_PRESETS[prov] ?? [];
+    const current = existingConfig.model;
+    const all = current && !presets.includes(current) ? [current, ...presets] : presets;
+    return all.map(m => ({ value: m, label: m }));
+  };
+
+  const onSave = async (values: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      const newConfig = { ...existingConfig, ...values };
+      // preserve existing apiKey if input is empty
+      if (!values.apiKey) delete newConfig.apiKey;
+      const updated = { ...provider, config: JSON.stringify(newConfig) };
+      await updateProvider(provider.id, updated);
+      message.success(t('saved'));
+      onSaved();
+    } catch {
+      message.error('Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const providerMeta = PROVIDERS.find(p => p.value === existingConfig.provider);
+
+  return (
+    <Card title={<Title level={5} style={{ margin: 0 }}>{t('llmConfigCard')}</Title>}>
+      {existingConfig.provider && (
+        <div style={{ marginBottom: 16 }}>
+          <Text type="secondary">Current: </Text>
+          <Tag color={providerMeta?.color ?? 'blue'}>{existingConfig.provider}</Tag>
+          <Tag color="purple">{existingConfig.model}</Tag>
+          {existingConfig.mockMode
+            ? <Tag color="volcano">Mock ON</Tag>
+            : <Tag color="green">Live LLM</Tag>}
+        </div>
+      )}
+
+      <Form form={form} layout="vertical" onFinish={onSave}>
+        {/* Mock Mode */}
+        <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '16px 20px', marginBottom: 24 }}>
+          <Form.Item name="mockMode" valuePropName="checked" style={{ marginBottom: 8 }}>
+            <Switch checkedChildren="Mock ON" unCheckedChildren="Mock OFF" onChange={setMockMode} />
+          </Form.Item>
+          <Text type="secondary" style={{ fontSize: 12 }}>{t('mockModeHint')}</Text>
+          {mockMode && (
+            <Form.Item name="mockScript" label={t('mockScript')} style={{ marginTop: 16, marginBottom: 0 }}>
+              <Radio.Group>
+                <Radio.Button value="MEDICATION">{t('mockScriptMedication')}</Radio.Button>
+                <Radio.Button value="ONLINE_CONSULTATION">{t('mockScriptOnline')}</Radio.Button>
+                <Radio.Button value="OFFLINE_APPOINTMENT">{t('mockScriptOffline')}</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+          )}
+        </div>
+
+        <Divider orientation="left">LLM Provider</Divider>
+
+        <Form.Item name="provider" label={t('provider')} rules={[{ required: true }]}>
+          <Select
+            options={PROVIDERS.map(p => ({ value: p.value, label: p.label }))}
+            onChange={handleProviderChange}
+          />
+        </Form.Item>
+
+        <Form.Item name="model" label={t('model')} rules={[{ required: true }]}>
+          <Select showSearch options={buildModelOptions(llmProvider)}
+            filterOption={(input, opt) => String(opt?.label ?? '').toLowerCase().includes(input.toLowerCase())} />
+        </Form.Item>
+
+        <Form.Item name="apiKey" label={t('apiKey')}
+          extra={existingConfig.apiKey ? `Current: ****...${String(existingConfig.apiKey).slice(-4)}` : 'No key configured'}>
+          <Input.Password placeholder="Enter new API key (leave empty to keep existing)" />
+        </Form.Item>
+
+        <Form.Item name="systemPrompt" label={t('systemPrompt')}>
+          <Input.TextArea rows={4} />
+        </Form.Item>
+
+        <Alert type="info" showIcon style={{ marginBottom: 16 }}
+          message="Config is applied on the next chat request via routing rules." />
+
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={saving}>{t('save')}</Button>
+        </Form.Item>
+      </Form>
+    </Card>
+  );
+};
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 const ProviderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -29,7 +167,8 @@ const ProviderDetail: React.FC = () => {
 
   const load = () => {
     setLoading(true);
-    Promise.all([getProvider(Number(id)), getProviderRecords(Number(id))])
+    const numId = Number(id);
+    Promise.all([getProvider(numId), getProviderRecords(numId)])
       .then(([p, r]) => { setProvider(p); setRecords(r); })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -50,34 +189,18 @@ const ProviderDetail: React.FC = () => {
       message.success(t('saved'));
       setRatingRecord(null);
       load();
-    } catch {
-      // stay open
-    } finally {
-      setRateSaving(false);
-    }
+    } catch { } finally { setRateSaving(false); }
   };
-
-  const statusColor = (s: string) => ({ DISPATCHED: 'processing', COMPLETED: 'success', FAILED: 'error' })[s] || 'default';
 
   const typeLabel = (type: string) => {
     const map: Record<string, string> = {
-      MEDICAL_LLM: t('MEDICAL_LLM'),
-      ONLINE_CONSULTATION: t('ONLINE_CONSULTATION'),
-      OFFLINE_APPOINTMENT: t('OFFLINE_APPOINTMENT'),
-      ONLINE_PHARMACY: t('ONLINE_PHARMACY'),
-      OTHER: t('OTHER'),
+      MEDICAL_LLM: t('MEDICAL_LLM'), ONLINE_CONSULTATION: t('ONLINE_CONSULTATION'),
+      OFFLINE_APPOINTMENT: t('OFFLINE_APPOINTMENT'), ONLINE_PHARMACY: t('ONLINE_PHARMACY'), OTHER: t('OTHER'),
     };
     return map[type] || type;
   };
 
-  const statusLabel = (s: string) => {
-    const map: Record<string, string> = {
-      DISPATCHED: t('DISPATCHED'),
-      COMPLETED: t('COMPLETED'),
-      FAILED: t('FAILED'),
-    };
-    return map[s] || s;
-  };
+  const statusColor = (s: string) => ({ DISPATCHED: 'processing', COMPLETED: 'success', FAILED: 'error' }[s] || 'default');
 
   const recordColumns = [
     { title: t('userName'), dataIndex: 'userName', key: 'userName' },
@@ -87,11 +210,11 @@ const ProviderDetail: React.FC = () => {
     },
     {
       title: t('status'), dataIndex: 'status', key: 'status',
-      render: (s: string) => <Tag color={statusColor(s)}>{statusLabel(s)}</Tag>,
+      render: (s: string) => <Tag color={statusColor(s)}>{s}</Tag>,
     },
     {
       title: t('avgRating'), dataIndex: 'rating', key: 'rating',
-      render: (r: number | null) => r != null ? <Rate disabled defaultValue={r} count={5} /> : <span style={{ color: '#999' }}>{t('noRating')}</span>,
+      render: (r: number | null) => r != null ? <Rate disabled value={r} count={5} /> : <span style={{ color: '#999' }}>{t('noRating')}</span>,
     },
     { title: t('startTime'), dataIndex: 'createdAt', key: 'createdAt', render: (v: string) => new Date(v).toLocaleString() },
     {
@@ -116,7 +239,7 @@ const ProviderDetail: React.FC = () => {
           </Descriptions.Item>
           <Descriptions.Item label={t('company')}>{provider.company}</Descriptions.Item>
           <Descriptions.Item label={t('enabled')}>
-            <Tag color={provider.enabled ? 'success' : 'default'}>{provider.enabled ? t('enabled') : t('FAILED')}</Tag>
+            <Tag color={provider.enabled ? 'success' : 'default'}>{provider.enabled ? t('enabled') : 'Disabled'}</Tag>
           </Descriptions.Item>
           <Descriptions.Item label={t('priority')}>{provider.priority}</Descriptions.Item>
           <Descriptions.Item label={t('serviceCount')}>{provider.serviceCount}</Descriptions.Item>
@@ -127,18 +250,16 @@ const ProviderDetail: React.FC = () => {
         </Descriptions>
       </Card>
 
-      <Card title={<Title level={5} style={{ margin: 0 }}>{t('serviceRecords')}</Title>}>
-        <Table dataSource={records} columns={recordColumns} rowKey="id" size="middle" pagination={{ pageSize: 20 }} />
-      </Card>
+      {provider.type === 'MEDICAL_LLM' ? (
+        <LlmConfigCard provider={provider} onSaved={load} />
+      ) : (
+        <Card title={<Title level={5} style={{ margin: 0 }}>{t('serviceRecords')}</Title>}>
+          <Table dataSource={records} columns={recordColumns} rowKey="id" size="middle" pagination={{ pageSize: 20 }} />
+        </Card>
+      )}
 
-      <Modal
-        title={t('rateService')}
-        open={!!ratingRecord}
-        onOk={handleRate}
-        onCancel={() => setRatingRecord(null)}
-        confirmLoading={rateSaving}
-        destroyOnClose
-      >
+      <Modal title={t('rateService')} open={!!ratingRecord} onOk={handleRate}
+        onCancel={() => setRatingRecord(null)} confirmLoading={rateSaving} destroyOnClose>
         <Form form={rateForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="rating" label={t('avgRating')} rules={[{ required: true }]}>
             <InputNumber min={1} max={5} style={{ width: '100%' }} />

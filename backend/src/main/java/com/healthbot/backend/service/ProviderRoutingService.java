@@ -35,6 +35,10 @@ public class ProviderRoutingService {
     /**
      * Select provider, record the dispatch, and return the provider (or null if none configured).
      */
+    public ServiceProvider selectMedicalLlm(String language, String specialty) {
+        return selectProvider("MEDICAL_LLM", language, specialty);
+    }
+
     public ServiceProvider dispatch(String recommendation, String language, String specialty, Long userId) {
         String providerType = TYPE_MAP.get(recommendation);
         if (providerType == null) return null;

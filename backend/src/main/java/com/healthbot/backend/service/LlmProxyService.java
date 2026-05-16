@@ -46,6 +46,17 @@ public class LlmProxyService {
         }
     }
 
+    public void applyProviderConfigJson(String configJson) {
+        if (configJson == null || configJson.isBlank()) return;
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> config = objectMapper.readValue(configJson, Map.class);
+            pushConfig(config);
+        } catch (Exception e) {
+            log.warn("Failed to apply MEDICAL_LLM provider config: {}", e.getMessage());
+        }
+    }
+
     public void resetChatCounter(Long userId) {
         try {
             restTemplate.delete(getApiUrl() + "/chat-counter/" + userId);

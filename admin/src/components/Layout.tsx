@@ -25,7 +25,6 @@ const AppLayout: React.FC<{ children: React.ReactNode; onLogout: () => void }> =
     { key: '/chat-history', icon: <MessageOutlined />, label: t('chatHistory') },
     { key: '/providers', icon: <ApiOutlined />, label: t('providers') },
     { key: '/routing-rules', icon: <BranchesOutlined />, label: t('routingRules') },
-    { key: '/llm-config', icon: <SettingOutlined />, label: t('llmConfig') },
     { key: '/settings', icon: <SettingOutlined />, label: t('settings') },
   ];
 

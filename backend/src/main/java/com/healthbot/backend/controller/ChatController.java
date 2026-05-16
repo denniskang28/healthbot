@@ -58,6 +58,12 @@ public class ChatController {
         // Update session state
         sessionService.updateState(userId, "CHATTING");
 
+        // Select MEDICAL_LLM provider via routing rules and apply its config
+        ServiceProvider llmProvider = providerRoutingService.selectMedicalLlm(language, null);
+        if (llmProvider != null) {
+            llmProxyService.applyProviderConfigJson(llmProvider.getConfig());
+        }
+
         // Call LLM
         LlmProxyService.ChatLlmResult llmResult = llmProxyService.chat(userId, content, history, language);
 
