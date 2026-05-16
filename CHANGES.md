@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-05-16 · Android 多环境支持 + 阿里云部署
+
+**需求：** 支持本地模拟器调试和云端真机测试并存，测试人员用自己手机连接阿里云服务器。
+
+**Android 改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `android/app/build.gradle` | 新增 `productFlavors`：`local`（`10.0.2.2:8080`）和 `cloud`（`YOUR_SERVER_IP:8080`）；开启 `buildConfig true` |
+| `android/api/RetrofitClient.kt` | `BASE_URL` 从硬编码改为读 `BuildConfig.BASE_URL` |
+
+**构建方式：**
+- 本地调试：Android Studio 选 **localDebug** variant → 连模拟器
+- 测试分发：选 **cloudRelease** variant → 生成 APK 分发给测试人员
+
+**阿里云部署架构：**
+
+```
+手机/浏览器
+  :80   →  Nginx  →  admin/dist（静态文件）
+                  →  /api/*, /admin/*  →  Backend :8080
+                  →  /ws              →  Backend :8080（WebSocket）
+  :8080 →  Backend（Spring Boot，手机直连）
+                  →  localhost:8000   →  LLM Service（仅内网，不暴露）
+```
+
+**服务器端口策略：**
+
+| 端口 | 开放 | 用途 |
+|------|------|------|
+| 80 | 公网 | Admin 控制台 |
+| 8080 | 公网 | Android 手机直连 Backend |
+| 8000 | 仅内网 | LLM Service，不对外暴露 |
+
+**部署方式：** LLM Service 和 Backend 用 `nohup` 或 `screen` 后台运行；Admin 用 `npm run build` 后由 Nginx 托管静态文件。
+
+---
+
 ## 2026-05-16 · Admin 登录鉴权 + 密码重置
 
 **需求：** Admin 控制台增加登录保护，初始密码 `12345`，可在系统管理页面重置。
