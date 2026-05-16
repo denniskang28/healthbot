@@ -2,6 +2,84 @@
 
 ---
 
+## 2026-05-16 · 可配置服务商管理 + 路由规则引擎
+
+**需求：** 把医疗大语言模型、线上问诊、线下预约、线上药房做成可配置可替换的服务商，支持多服务商并存、规则引擎按条件路由、Admin 可视化管理。
+
+**整体架构：**
+
+```
+LLM 判断 recommendation（ONLINE_CONSULTATION / OFFLINE_APPOINTMENT / MEDICATION）
+  ↓
+ChatController 调用 ProviderRoutingService.dispatch()
+  ↓
+规则引擎：按优先级评估 RoutingRule 列表
+  ├── 条件匹配（如 language=ZH）且有指定目标 → 选该服务商
+  ├── 条件匹配但无指定目标 → fallthrough 到默认
+  └── 无匹配规则 → 取优先级最高的已启用服务商
+  ↓
+记录 ServiceRecord（status=DISPATCHED）
+  ↓
+ActionsDto 返回 selectedProviderId / selectedProviderName / selectedProviderCompany
+```
+
+**服务商类型：**
+
+| 类型 | 说明 | 最大数量 |
+|------|------|---------|
+| `MEDICAL_LLM` | 医疗大语言模型（当前固定为 Anthropic Claude） | 1 |
+| `ONLINE_CONSULTATION` | 线上问诊平台 | 多个 |
+| `OFFLINE_APPOINTMENT` | 线下预约网络 | 多个 |
+| `ONLINE_PHARMACY` | 线上药房 | 多个 |
+| `OTHER` | 其他类型 | 多个 |
+
+**种子数据（首次启动自动写入）：**
+
+| 服务商 | 类型 | 公司 | 优先级 |
+|--------|------|------|--------|
+| Anthropic Claude | MEDICAL_LLM | Anthropic | 100 |
+| PingAn Good Doctor | ONLINE_CONSULTATION | PingAn Health | 100 |
+| Aliyun Health | ONLINE_CONSULTATION | Alibaba Cloud | 80 |
+| PingAn Hospital Network | OFFLINE_APPOINTMENT | PingAn Health | 100 |
+| United Family Healthcare | OFFLINE_APPOINTMENT | UFH Group | 80 |
+| PingAn Pharmacy | ONLINE_PHARMACY | PingAn Health | 100 |
+| JD Pharmacy | ONLINE_PHARMACY | JD.com | 80 |
+
+**默认路由规则（ZH 用户优先走平安渠道）：**
+
+| 规则 | 条件 | 目标服务商 | 优先级 |
+|------|------|-----------|--------|
+| ZH - Online Consultation | `{"language":"ZH"}` | PingAn Good Doctor | 100 |
+| ZH - Offline Appointment | `{"language":"ZH"}` | PingAn Hospital Network | 100 |
+| ZH - Online Pharmacy | `{"language":"ZH"}` | PingAn Pharmacy | 100 |
+
+**各组件改动：**
+
+| 文件 | 改动 |
+|------|------|
+| `backend/model/ServiceProvider.java` | **新增** — 服务商实体（name、type、company、description、enabled、priority、config JSON） |
+| `backend/model/ServiceRecord.java` | **新增** — 调度记录实体（providerId、userId、serviceType、status、rating、notes） |
+| `backend/model/RoutingRule.java` | **新增** — 路由规则实体（serviceType、conditionJson、targetProviderId、priority、enabled） |
+| `backend/repository/ServiceProviderRepository.java` | **新增** |
+| `backend/repository/ServiceRecordRepository.java` | **新增** — 含 `countByProviderId`、`avgRatingByProviderId` 聚合查询 |
+| `backend/repository/RoutingRuleRepository.java` | **新增** |
+| `backend/service/ProviderRoutingService.java` | **新增** — `dispatch(recommendation, language, userId)` 实现完整规则引擎 |
+| `backend/controller/ProviderController.java` | **新增** — 服务商 CRUD（含启用/禁用、服务记录查询、评分）；路由规则 CRUD |
+| `backend/controller/ChatController.java` | 聊天完成后调用 `dispatch()`，将服务商信息写入 `ActionsDto` |
+| `backend/dto/ActionsDto.java` | 新增 `selectedProviderId / selectedProviderName / selectedProviderCompany` |
+| `backend/service/LlmProxyService.java` | 更新 `ActionsDto` 构造以匹配新字段 |
+| `backend/config/DataInitializer.java` | 新增服务商和路由规则种子数据块（`count() == 0` 守卫） |
+| `admin/src/pages/Providers.tsx` | **新页面** — 服务商列表（类型 Tag、启用开关、服务次数、评分），支持新增/编辑/删除 |
+| `admin/src/pages/ProviderDetail.tsx` | **新页面** — 服务商详情（基本信息 + 服务记录表格 + 评分操作） |
+| `admin/src/pages/RoutingRules.tsx` | **新页面** — 路由规则管理（条件配置、目标服务商选择、优先级排序、启用开关） |
+| `admin/src/api/types.ts` | 新增 `ServiceProviderDto`、`ServiceRecordDto`、`RoutingRuleDto` |
+| `admin/src/api/client.ts` | 新增服务商和路由规则的全套 API 调用 |
+| `admin/src/context/LanguageContext.tsx` | 新增 EN/ZH 翻译键（服务商类型、状态、操作按钮等 30+ 个键） |
+| `admin/src/App.tsx` | 注册 `/providers`、`/providers/:id`、`/routing-rules` 路由 |
+| `admin/src/components/Layout.tsx` | 侧边栏新增「服务商」（ApiOutlined）和「路由规则」（BranchesOutlined）菜单项 |
+
+---
+
 ## 2026-05-16 · Android 多环境支持 + 阿里云部署
 
 **需求：** 支持本地模拟器调试和云端真机测试并存，测试人员用自己手机连接阿里云服务器。
